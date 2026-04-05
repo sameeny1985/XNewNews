@@ -101,16 +101,18 @@ import json # این رو بالای فایل اضافه کن
 
 import json
 
+import json # این حتما باید خط اول فایل app.py باشد
+
 def send_telegram(title_fa, description_fa, source, news_id):
-    # ۱. بررسی وجود توکن
+    # ۱. چک کردن توکن (اگر خالی باشد کلاً اجرا نمی‌شود)
     if not TOKEN or "YOUR_BOT" in TOKEN:
-        print("❌ توکن تلگرام تنظیم نشده است.")
+        print("❌ توکن تلگرام یافت نشد!")
         return
-    
-    # ۲. ساخت لینک (مطمئن شو آدرس سایتت در رندر همین است)
+
+    # ۲. ساخت لینک سایت (مطمئن شو آدرس سایتت در رندر همین است)
     my_site_link = f"https://irananalysis.onrender.com/news/{news_id}"
     
-    # ۳. تمیز کردن و خلاصه کردن متن
+    # ۳. خلاصه متن
     summary = description_fa[:250] + "..." if len(description_fa) > 250 else description_fa
     
     # ۴. متن پیام
@@ -119,31 +121,30 @@ def send_telegram(title_fa, description_fa, source, news_id):
             f"📍 منبع: {source}\n\n"
             f"🆔 @KhabarAnalysBan")
 
-    # ۵. ساخت دکمه شیشه‌ای (Inline Keyboard)
-    reply_markup = {
-        "inline_keyboard": [
-            [
-                {"text": "📖 مطالعه مشروح کامل خبر در سایت", "url": my_site_link}
-            ]
-        ]
+    # ۵. ساخت دکمه شیشه‌ای
+    markup = {
+        "inline_keyboard": [[
+            {"text": "📖 مطالعه مشروح کامل خبر در سایت", "url": my_site_link}
+        ]]
     }
 
-    # ۶. ارسال نهایی
+    # ۶. ارسال نهایی با مدیریت خطا
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
-        "reply_markup": json.dumps(reply_markup) # تبدیل اجباری به استرینگ JSON
+        "reply_markup": json.dumps(markup) # تبدیل به جیسون برای تلگرام
     }
     
     try:
-        response = requests.post(url, data=payload, timeout=15)
-        if response.status_code != 200:
-            print(f"❌ خطای تلگرام: {response.text}") # این لاگ در پنل رندر بهت میگه مشکل چیه
+        res = requests.post(url, data=payload, timeout=15)
+        if res.status_code != 200:
+            print(f"❌ خطای تلگرام: {res.text}") # این لاگ رو توی پنل رندر چک کن
+        else:
+            print("✅ خبر با موفقیت به تلگرام ارسال شد.")
     except Exception as e:
-        print(f"❌ خطای کانکشن تلگرام: {e}")
-def translate_now(text):
+        print(f"❌ خطای شبکه تلگرام: {e}")def translate_now(text):
     if not text or len(text) < 5: return text
     try:
         # این کتابخانه از نسخه‌های بهینه‌تر گوگل استفاده می‌کند
