@@ -103,55 +103,44 @@ import json
 
 import json # این حتما باید خط اول فایل app.py باشد
 
-def send_telegram(title_fa, description_fa, source, news_id):
-    # ۱. چک کردن توکن (اگر خالی باشد کلاً اجرا نمی‌شود)
-    if not TOKEN or "YOUR_BOT" in TOKEN:
-        print("❌ توکن تلگرام یافت نشد!")
-        return
+import json
 
-    # ۲. ساخت لینک سایت (مطمئن شو آدرس سایتت در رندر همین است)
+def send_telegram(title_and_en, description, source, date, news_id):
+    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN": return
+    
+    # آدرس خبر در سایت خودت (جایگزین لینک مستقیم منبع)
     my_site_link = f"https://irananalysis.onrender.com/news/{news_id}"
     
-    # ۳. خلاصه متن
-    summary = description_fa[:250] + "..." if len(description_fa) > 250 else description_fa
+    # خلاصه خبر برای تلگرام (مثلاً ۲۰۰ کاراکتر اول)
+    summary = description[:200] + "..." if len(description) > 200 else description
     
-    # ۴. متن پیام
-    text = (f"🚀 <b>{title_fa}</b>\n\n"
-            f"📝 {summary}\n\n"
-            f"📍 منبع: {source}\n\n"
+    # متن پیام (بدون لینک منبع خبر در متن، چون دکمه جایش را می‌گیرد)
+    text = (f"<b>منبع: {source}</b>\n"
+            f"📅 زمان: {date}\n\n"
+            f"<b>{title_and_en}</b>\n\n"
+            f"📝 خلاصه خبر:\n{summary}\n\n"
             f"🆔 @KhabarAnalysBan")
-
-    # ۵. ساخت دکمه شیشه‌ای
-    markup = {
+    
+    # ساخت دکمه شیشه‌ای
+    reply_markup = {
         "inline_keyboard": [[
             {"text": "📖 مطالعه مشروح کامل خبر در سایت", "url": my_site_link}
         ]]
     }
-
-    # ۶. ارسال نهایی با مدیریت خطا
+    
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
-        "reply_markup": json.dumps(markup)  # تبدیل به جیسون برای تلگرام
+        "reply_markup": json.dumps(reply_markup)
     }
     
     try:
-        # ارسال درخواست به تلگرام
-        res = requests.post(url, data=payload, timeout=30)
-        
-        # بررسی وضعیت پاسخ و چاپ جزئیات آن
-        print(f"کد وضعیت HTTP: {res.status_code}")
-        print(f"محتوای پاسخ تلگرام: {res.text}")
-        
-        if res.status_code != 200:
-            print(f"❌ خطای تلگرام: {res.text}")  # این لاگ رو توی پنل رندر چک کن
-        else:
-            print("✅ خبر با موفقیت به تلگرام ارسال شد.")
-    
-    except Exception as e:
-        print(f"❌ خطای شبکه تلگرام: {e}")
+        # ارسال با متد استاندارد JSON برای نمایش قطعی دکمه
+        requests.post(url, data=payload, timeout=15)
+    except:
+        pass
 def update_logic():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
