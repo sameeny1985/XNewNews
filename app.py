@@ -219,19 +219,7 @@ def index():
         })
     conn.close()
     return render_template('index.html', news=news_data)
-@app.route('/news/<int:news_id>')
-def show_news(news_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    # پیدا کردن خبر بر اساس ID که در لینک تلگرام فرستادیم
-    c.execute("SELECT title_fa, desc_fa, source, pub_date FROM news WHERE id=?", (news_id,))
-    row = c.fetchone()
-    conn.close()
-    
-    if row:
-        item = {"title": row[0], "content": row[1], "source": row[2], "date": row[3]}
-        return render_template('post.html', item=item)
-    return "خبر پیدا نشد!", 404
+
 @app.route('/news/<int:news_id>')
 def show_news(news_id):
     conn = sqlite3.connect(DB_PATH)
