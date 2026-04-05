@@ -4,3 +4,4 @@ beautifulsoup4
 lxml
 gunicorn
 deep_translator
+lxml
