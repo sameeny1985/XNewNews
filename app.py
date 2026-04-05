@@ -9,8 +9,8 @@ from email.utils import parsedate_to_datetime
 app = Flask(__name__)
 
 # --- تنظیمات ---
-TOKEN = "8616264397:AAGzauvZsP_3VHMrjllvJb-9PrfhPB6eA4c"
-CHAT_ID = "@KhabarAnalysBan"
+TOKEN = "8794841888:AAEp8OscKwCmIHxujIQHG4-yyju5wPV7u2k"
+CHAT_ID = "@AnalytixNews"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "news.db")
 
