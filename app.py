@@ -97,48 +97,43 @@ def init_db():
     conn.commit()
     conn.close()
 
+import json # این رو بالای فایل اضافه کن
+
 def send_telegram(title_fa, description_fa, source, news_id):
     if not TOKEN or TOKEN == "YOUR_BOT_TOKEN": return
     
-    # ۱. ساخت لینک اختصاصی خبر در سایت خودت
-    # کاربر با کلیک روی این لینک، به سایت تو می‌آید تا متن کامل را بخواند
+    # ۱. آدرس اختصاصی خبر در سایت تو
     my_site_link = f"https://irananalysis.onrender.com/news/{news_id}"
     
-    # ۲. بریدن متن برای ساخت خلاصه (مثلاً ۱۸۰ کاراکتر اول)
-    summary = description_fa[:180] + "..." if len(description_fa) > 180 else description_fa
+    # ۲. خلاصه‌سازی متن برای تلگرام
+    summary = description_fa[:200] + "..." if len(description_fa) > 200 else description_fa
     
-    # ۳. چیدمان پیام تلگرام
+    # ۳. متن اصلی پیام
     text = (f"🚀 <b>{title_fa}</b>\n\n"
             f"📝 {summary}\n\n"
-            f"📍 منبع: {source}\n"
-            f"————————————————\n"
-            f"👇 <b>مشروح کامل خبر را در سایت بخوانید:</b>\n"
-            f"🔗 {my_site_link}\n\n"
+            f"📍 منبع اصلی: {source}\n\n"
             f"🆔 @KhabarAnalysBan")
-    
+
+    # ۴. ساخت دکمه شیشه‌ای (Inline Keyboard)
+    reply_markup = {
+        "inline_keyboard": [[
+            {"text": "📖 مطالعه مشروح خبر در سایت", "url": my_site_link}
+        ]]
+    }
+
+    # ۵. ارسال به تلگرام همراه با دکمه
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "reply_markup": json.dumps(reply_markup) # تبدیل دیکشنری به JSON برای تلگرام
+    }
+    
     try:
-        requests.post(url, data={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=15)
-    except: pass
-
-# --- بخش آپدیت لوجیک (جایی که ترجمه اتفاق می‌افتد) ---
-# در انتهای حلقه for در تابع update_logic این اصلاح را بزن:
-
-                # ترجمه کامل (هم تیتر هم شرح)
-                title_fa = translate_now(title_en)
-                desc_fa = translate_now(desc_en)
-                
-                # ذخیره در دیتابیس
-                c.execute("""INSERT INTO news (title_fa, title_en, desc_fa, desc_en, source, link, pub_date) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?)""", 
-                          (title_fa, title_en, desc_fa, desc_en, src['name'], link, sortable_date))
-                conn.commit()
-                
-                # گرفتن ID خبری که همین الان ذخیره شد برای ساخت لینک سایت
-                new_id = c.lastrowid
-                
-                # حالا ارسال به تلگرام با خلاصه و لینک سایت خودت
-                send_telegram(title_fa, desc_fa, src['name'], new_id)
+        requests.post(url, data=payload, timeout=15)
+    except Exception as e:
+        print(f"Error sending to Telegram: {e}")
 def translate_now(text):
     if not text or len(text) < 5: return text
     try:
