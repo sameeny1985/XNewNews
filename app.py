@@ -99,41 +99,50 @@ def init_db():
 
 import json # این رو بالای فایل اضافه کن
 
+import json
+
 def send_telegram(title_fa, description_fa, source, news_id):
-    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN": return
+    # ۱. بررسی وجود توکن
+    if not TOKEN or "YOUR_BOT" in TOKEN:
+        print("❌ توکن تلگرام تنظیم نشده است.")
+        return
     
-    # ۱. آدرس اختصاصی خبر در سایت تو
+    # ۲. ساخت لینک (مطمئن شو آدرس سایتت در رندر همین است)
     my_site_link = f"https://irananalysis.onrender.com/news/{news_id}"
     
-    # ۲. خلاصه‌سازی متن برای تلگرام
-    summary = description_fa[:200] + "..." if len(description_fa) > 200 else description_fa
+    # ۳. تمیز کردن و خلاصه کردن متن
+    summary = description_fa[:250] + "..." if len(description_fa) > 250 else description_fa
     
-    # ۳. متن اصلی پیام
+    # ۴. متن پیام
     text = (f"🚀 <b>{title_fa}</b>\n\n"
             f"📝 {summary}\n\n"
-            f"📍 منبع اصلی: {source}\n\n"
+            f"📍 منبع: {source}\n\n"
             f"🆔 @KhabarAnalysBan")
 
-    # ۴. ساخت دکمه شیشه‌ای (Inline Keyboard)
+    # ۵. ساخت دکمه شیشه‌ای (Inline Keyboard)
     reply_markup = {
-        "inline_keyboard": [[
-            {"text": "📖 مطالعه مشروح خبر در سایت", "url": my_site_link}
-        ]]
+        "inline_keyboard": [
+            [
+                {"text": "📖 مطالعه مشروح کامل خبر در سایت", "url": my_site_link}
+            ]
+        ]
     }
 
-    # ۵. ارسال به تلگرام همراه با دکمه
+    # ۶. ارسال نهایی
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
-        "reply_markup": json.dumps(reply_markup) # تبدیل دیکشنری به JSON برای تلگرام
+        "reply_markup": json.dumps(reply_markup) # تبدیل اجباری به استرینگ JSON
     }
     
     try:
-        requests.post(url, data=payload, timeout=15)
+        response = requests.post(url, data=payload, timeout=15)
+        if response.status_code != 200:
+            print(f"❌ خطای تلگرام: {response.text}") # این لاگ در پنل رندر بهت میگه مشکل چیه
     except Exception as e:
-        print(f"Error sending to Telegram: {e}")
+        print(f"❌ خطای کانکشن تلگرام: {e}")
 def translate_now(text):
     if not text or len(text) < 5: return text
     try:
@@ -193,6 +202,7 @@ def update_logic():
                               (title_fa, title_en, desc_fa, desc_en, src['name'], link, sortable_date))
                     conn.commit()
                     # این خط را در انتهای تابع update_logic پیدا و جایگزین کن:
+                    new_id = c.lastrowid
                     send_telegram(f"{title_fa}\n{title_en}", desc_fa, src['name'], display_date, link)
         except: continue
     
