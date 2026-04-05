@@ -134,25 +134,24 @@ def send_telegram(title_fa, description_fa, source, news_id):
         "chat_id": CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
-        "reply_markup": json.dumps(markup) # تبدیل به جیسون برای تلگرام
+        "reply_markup": json.dumps(markup)  # تبدیل به جیسون برای تلگرام
     }
     
     try:
-        res = requests.post(url, data=payload, timeout=15)
+        # ارسال درخواست به تلگرام
+        res = requests.post(url, data=payload, timeout=30)
+        
+        # بررسی وضعیت پاسخ و چاپ جزئیات آن
+        print(f"کد وضعیت HTTP: {res.status_code}")
+        print(f"محتوای پاسخ تلگرام: {res.text}")
+        
         if res.status_code != 200:
-            print(f"❌ خطای تلگرام: {res.text}") # این لاگ رو توی پنل رندر چک کن
+            print(f"❌ خطای تلگرام: {res.text}")  # این لاگ رو توی پنل رندر چک کن
         else:
             print("✅ خبر با موفقیت به تلگرام ارسال شد.")
+    
     except Exception as e:
-        print(f"❌ خطای شبکه تلگرام: {e}")def translate_now(text):
-    if not text or len(text) < 5: return text
-    try:
-        # این کتابخانه از نسخه‌های بهینه‌تر گوگل استفاده می‌کند
-        translated = GoogleTranslator(source='auto', target='fa').translate(text)
-        return translated
-    except:
-        return text
-
+        print(f"❌ خطای شبکه تلگرام: {e}")
 def update_logic():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -204,7 +203,7 @@ def update_logic():
                     conn.commit()
                     # این خط را در انتهای تابع update_logic پیدا و جایگزین کن:
                     new_id = c.lastrowid
-                    send_telegram(f"{title_fa}\n{title_en}", desc_fa, src['name'], display_date, link)
+                    send_telegram(title_fa, desc_fa, src['name'], new_id)
         except: continue
     
     c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_update', ?)", (str(time.time()),))
