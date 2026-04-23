@@ -2,8 +2,6 @@ flask
 requests
 beautifulsoup4
 lxml
-gunicorn
-deep_translator
-lxml
 newspaper3k
-lxml_html_clean
+googletrans==4.0.0-rc1
+gunicorn
