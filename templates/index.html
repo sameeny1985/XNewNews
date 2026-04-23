@@ -1,125 +1,22 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="fa">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="30">
-    
-    <title>خبر آنالیزبان - رصد لحظه‌ای</title>
-    
     <style>
-        body { 
-            font-family: 'Tahoma', 'Arial', sans-serif; 
-            background-color: #f0f2f5; 
-            margin: 0; 
-            padding: 20px; 
-            line-height: 1.6;
-        }
-        .telegram-box { 
-            background: white; 
-            padding: 25px; 
-            text-align: center; 
-            border-radius: 15px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            margin-bottom: 30px; 
-            border: 1px solid #e1e4e8;
-        }
-        .btn-telegram { 
-            background: #0088cc; 
-            color: white; 
-            padding: 12px 25px; 
-            text-decoration: none; 
-            border-radius: 8px; 
-            display: inline-block; 
-            margin-top: 15px; 
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-        .btn-telegram:hover {
-            background: #006699;
-        }
-        .news-card { 
-            background: white; 
-            padding: 20px; 
-            margin-bottom: 20px; 
-            border-radius: 12px; 
-            border-right: 6px solid #0088cc; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-        }
-        .source-info { 
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px; 
-            color: #0088cc; 
-            font-weight: bold;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 5px;
-        }
-        .title-fa { 
-            margin: 10px 0; 
-            color: #1a1a1a; 
-            font-size: 20px; 
-            font-weight: bold;
-            text-align: right;
-        }
-        .desc-fa { 
-            color: #444; 
-            font-size: 15px;
-            text-align: right;
-            margin-bottom: 15px;
-        }
-        .english-section {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border-radius: 8px;
-            direction: ltr;
-            text-align: left;
-            border-left: 3px solid #ccc;
-            margin-top: 15px;
-        }
-        .title-en {
-            display: block;
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-            font-family: 'Arial', sans-serif;
-        }
-        .desc-en {
-            display: block;
-            font-size: 13px;
-            color: #666;
-            font-family: 'Arial', sans-serif;
-        }
+        body { font-family: Tahoma, Arial; background: #f4f4f4; padding: 20px; line-height: 1.6; }
+        .news-card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .title { color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.2em; }
+        /* جلوگیری از بهم ریختگی کلمات انگلیسی */
+        p, a, h1 { unicode-bidi: embed; direction: rtl; text-align: right; }
     </style>
 </head>
 <body>
-
-    <div class="telegram-box">
-        <h3 style="margin:0; color:#333;">جهت دریافت آنلاین خبرها عضو کانال تلگرام شوید</h3>
-        <p style="color:#666; margin:10px 0;">آخرین تحلیل‌ها و اخبار فوری در @KhabarAnalysBan</p>
-        <a href="https://t.me/KhabarAnalysBan" class="btn-telegram">عضویت در کانال خبری "خبر آنالیزبان"</a>
+    <h1>آخرین اخبار تحلیل ایران</h1>
+    {% for item in news %}
+    <div class="news-card">
+        <a href="/news/{{ item[0] }}" class="title">{{ item[1] }}</a>
+        <p>منبع: {{ item[2] }} | زمان: {{ item[3] }}</p>
     </div>
-
-    <div id="news-container">
-        {% for item in news %}
-        <div class="news-card">
-            <div class="source-info">
-                <span>{{ item.source }}</span>
-                <span>{{ item.date }}</span>
-            </div>
-            
-            <div class="title-fa">{{ item.title_fa }}</div>
-            <div class="desc-fa">{{ item.desc_fa }}</div>
-
-            <div class="english-section">
-                <span class="title-en">{{ item.title_en }}</span>
-                <span class="desc-en">{{ item.desc_en }}</span>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
+    {% endfor %}
 </body>
 </html>
