@@ -22,15 +22,18 @@ DB_PATH = "news.db"
 RLM = "\u200f"
 
 def ai_translate(text):
-    """ترجمه با تلاش برای حفظ ساختار جملات فارسی"""
     try:
-        if not text or len(text) < 5: return ""
-        # ترجمه توسط هوش مصنوعی گوگل (نسخه جدید)
-        result = translator.translate(text, dest='fa')
-        translated_text = result.text
-        # اضافه کردن کاراکتر کنترل جهت برای جلوگیری از بهم ریختگی کلمات انگلیسی لابلای فارسی
-        return f"{RLM}{translated_text}"
-    except:
+        if not text: return ""
+        # ترجمه متن
+        translated = translator.translate(text, dest='fa').text
+        
+        # اصلاح چیدمان: اضافه کردن کاراکتر RLM به ابتدا و انتهای متن 
+        # برای جلوگیری از بهم ریختگی کلمات انگلیسی در فارسی
+        structured_text = f"\u200f{translated}\u200f"
+        
+        return structured_text
+    except Exception as e:
+        print(f"Translation Error: {e}")
         return text
 
 def get_full_content(url):
@@ -129,4 +132,7 @@ def news_detail(news_id):
     abort(404)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    init_db() # ایجاد دیتابیس در اولین اجرا
+    # رندر پورت رو به صورت خودکار از متغیر PORT می‌خونه
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
