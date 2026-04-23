@@ -1,32 +1,23 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="fa">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ item.title }} - خبر آنالیزبان</title>
     <style>
-        body { font-family: 'Tahoma', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; line-height: 1.8; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        h1 { color: #0088cc; font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        .meta { font-size: 13px; color: #888; margin-bottom: 20px; display: flex; justify-content: space-between; }
-        .content { font-size: 17px; text-align: justify; white-space: pre-wrap; }
-        .back-btn { display: inline-block; margin-top: 30px; padding: 10px 20px; background: #0088cc; color: white; text-decoration: none; border-radius: 5px; }
-        .source-link { color: #ff5722; font-weight: bold; text-decoration: none; }
+        body { font-family: Tahoma, Arial; direction: rtl; padding: 30px; max-width: 800px; margin: auto; line-height: 1.8; }
+        .content { background: white; padding: 20px; border-radius: 10px; unicode-bidi: embed; }
+        .meta { color: #777; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="meta">
-            <span>منبع: <b>{{ item.source }}</b></span>
-            <span>تاریخ: {{ item.date }}</span>
-        </div>
-        <h1>{{ item.title }}</h1>
-        <div class="content">
-            {{ item.content }}
-        </div>
-        <hr>
-        <p>🔗 مشاهده متن اصلی در منبع: <a href="{{ item.original_link }}" class="source-link" target="_blank">کلیک کنید</a></p>
-        <a href="/" class="back-btn">← بازگشت به صفحه اصلی</a>
+    <h1>{{ title }}</h1>
+    <div class="meta">منبع: {{ source }} | تاریخ: {{ date }}</div>
+    <hr>
+    <div class="content">
+        {{ content | safe }}
     </div>
+    <br>
+    <a href="{{ original }}">لینک به منبع اصلی خبر</a>
+    <br><br>
+    <a href="/">بازگشت به صفحه اصلی</a>
 </body>
 </html>
