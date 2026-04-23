@@ -1,245 +1,132 @@
-import requests
-from bs4 import BeautifulSoup
-from flask import Flask, render_template
-import sqlite3
 import os
-import time
+import json
+import sqlite3
+import requests
+from flask import Flask, render_template, abort
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from googletrans import Translator
+from newspaper import Article
 
 app = Flask(__name__)
+translator = Translator()
 
 # --- تنظیمات ---
 TOKEN = "8794841888:AAEp8OscKwCmIHxujIQHG4-yyju5wPV7u2k"
 CHAT_ID = "@AnalytixNews"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "news.db")
+MY_SITE_URL = "https://irananalysis.onrender.com"
+DB_PATH = "news.db"
 
-SOURCES = [
-    # --- منابع فارسی و بین‌المللی ---
-    {"name": "ایران اینترنشنال", "url": "https://news.google.com/rss/search?q=Iran+International&hl=fa&gl=IR&ceid=IR:fa"},
-    {"name": "صدای آمریکا (VOA)", "url": "https://ir.voanews.com/api/z$p_eyuvt_"},
-    {"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/zsqym_egiv"},
-    {"name": "بی‌بی‌سی فارسی", "url": "https://www.bbc.com/persian/index.xml"},
-    {"name": "دویچه وله (DW)", "url": "https://rss.dw.com/rdf/rss-fa-all"},
-    {"name": "خبرگزاری فارس", "url": "https://www.farsnews.ir/rss"},
-   
-    {"name": "رویترز (Reuters)", "url": "https://www.reutersagency.com/feed/"},
-    {"name": "CNN (Iran Focus)", "url": "https://news.google.com/rss/search?q=CNN+Iran&hl=en&gl=US&ceid=US:en"},
-    {"name": "Fox News (Iran Focus)", "url": "https://news.google.com/rss/search?q=Fox+News+Iran&hl=en&gl=US&ceid=US:en"},
+# نشانه RLM برای جلوگیری از بهم ریختگی متن در فارسی و انگلیسی
+RLM = "\u200f"
 
-    # --- منابع اسرائیلی ---
-    {"name": "رادیو پیام اسرائیل", "url": "https://radisrael.com/feed/"},
-    {"name": "کانال ۱۱ اسرائیل (Kaan)", "url": "https://www.kan.org.il/rss/"},
-    {"name": "کانال ۱۲ اسرائیل (N12)", "url": "https://www.mako.co.il/news-israel?partner=rss"},
-    {"name": "کانال ۱۴ اسرائیل", "url": "https://www.now14.co.il/feed/"},
+def ai_translate(text):
+    """ترجمه با تلاش برای حفظ ساختار جملات فارسی"""
+    try:
+        if not text or len(text) < 5: return ""
+        # ترجمه توسط هوش مصنوعی گوگل (نسخه جدید)
+        result = translator.translate(text, dest='fa')
+        translated_text = result.text
+        # اضافه کردن کاراکتر کنترل جهت برای جلوگیری از بهم ریختگی کلمات انگلیسی لابلای فارسی
+        return f"{RLM}{translated_text}"
+    except:
+        return text
 
-    # --- توییترها (از طریق Nitter برای دور زدن فیلتر کویب) ---
-    {"name": "توییتر ترامپ", "url": "https://nitter.net/realDonaldTrump/rss"},
-    {"name": "توییتر نتانیاهو", "url": "https://nitter.net/netanyahu/rss"},
-    {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"},
-    {"name": "سخنگوی کاخ سفید", "url": "https://nitter.net/PressSec/rss"},
-    {"name": "خبرگزاری تسنیم", "url": "https://www.tasnimnews.com/fa/rss/allfeed"},
-    {"name": "خبرگزاری ایسنا (ISNA)", "url": "https://www.isna.ir/rss"},
-    {"name": "تایمز اسرائیل (فارسی)", "url": "https://fa.timesofisrael.com/feed/"},
-    {"name": "وزیر دفاع اسرائیل", "url": "https://nitter.net/YoavGallant/rss"},
-    {"name": "آسوشیتد پرس (AP)", "url": "https://news.google.com/rss/search?q=source:Associated+Press&hl=en&gl=US&ceid=US:en"},
-    {"name": "الجزیره (انگلیسی)", "url": "https://www.aljazeera.com/xml/rss/all.xml"},
-    {"name": "العربیه (فارسی)", "url": "https://farsi.alarabiya.net/.mrss/fa.xml"},
-    {"name": "توییتر عباس عراقچی", "url": "https://nitter.net/araghchi/rss"},
-    {"name": "توییتر قالیباف", "url": "https://nitter.net/mb_ghalibaf/rss"},
-    {"name": "سناتور لیندسی گراهام", "url": "https://nitter.net/LindseyGrahamSC/rss"},
-    {"name": "وزیر دفاع آمریکا", "url": "https://nitter.net/SecDef/rss"},
-    {"name": "سخنگوی سنتکام (CENTCOM)", "url": "https://nitter.net/CENTCOM/rss"},
-    {"name": "من و تو (Manoto)", "url": "https://news.google.com/rss/search?q=source:Manoto&hl=fa&gl=IR&ceid=IR:fa"},
-    {"name": "کیهان لندن", "url": "https://kayhan.london/fa/feed/"},
-    {"name": "توییتر محسن رضایی", "url": "https://nitter.net/ir_rezaee/rss"},
-    {"name": "دبیرکل سازمان ملل (Guterres)", "url": "https://nitter.net/antonioguterres/rss"},
-    {"name": "سخنگوی سازمان ملل", "url": "https://nitter.net/UN_Spokesperson/rss"},
-    {"name": "نیکی هیلی (Nikki Haley)", "url": "https://nitter.net/NikkiHaley/rss"},
-    {"name": "سخنگوی شورای امنیت ملی آمریکا", "url": "https://nitter.net/NSC_Spox/rss"},
-    {"name": "سخنگوی عفو بین‌الملل", "url": "https://nitter.net/AgnesCallamard/rss"},
-    {"name": "وال استریت ژورنال (WSJ)", "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml"},
-    {"name": "صدای آمریکا (VOA)", "url": "https://nitter.net/VOAIran/rss"},
-    {"name": "رادیو فردا", "url": "https://nitter.net/RadioFarda_/rss"},
-    {"name": "من و تو (Manoto)", "url": "https://nitter.net/manototv/rss"},
-    {"name": "رویترز (Reuters Iran)", "url": "https://nitter.net/ReutersIran/rss"},
-    {"name": "دویچه وله (DW) فارسی", "url": "https://nitter.net/dw_persian/rss"},
-    # {"name": "خبرگزاری فارس", "url": "https://nitter.net/FarsNews_Agency/rss"},
-    # {"name": "خبرگزاری تسنیم", "url": "https://nitter.net/Tasnimnews_Fa/rss"},
-    # {"name": "خبرگزاری ایسنا", "url": "https://nitter.net/isna_farsi/rss"},
-    {"name": "العربیه فارسی", "url": "https://nitter.net/AlArabiya_Far/rss"},
-    {"name": "کیهان لندن", "url": "https://nitter.net/KayhanLondon/rss"},
-    {"name": "وال استریت ژورنال", "url": "https://nitter.net/WSJ/rss"},
-    
-    # --- منابع اسرائیلی (نسخه توییتر برای پایداری ۱۰۰٪) ---
-    {"name": "کانال ۱۱ اسرائیل (Kaan)", "url": "https://nitter.net/kann_news/rss"},
-    {"name": "کانال ۱۲ اسرائیل (N12)", "url": "https://nitter.net/N12News/rss"},
-    {"name": "کانال ۱۴ اسرائیل", "url": "https://nitter.net/Now14Israel/rss"},
-    {"name": "تایمز اسرائیل (فارسی)", "url": "https://nitter.net/TimesofIsraelFA/rss"},
-    {"name": "رادیو پیام اسرائیل", "url": "https://nitter.net/Be_Yisrael/rss"},
-    {"name": "تحلیل استراتژیک ویدکاف", "url": "https://nitter.cz/vidcaff/rss"},
-    {"name": "i24News English", "url": "https://nitter.net/i24NEWS_EN/rss"},
-    {"name": "Jerusalem Post", "url": "https://nitter.net/Jerusalem_Post/rss"},
-    {"name": "Times of Israel", "url": "https://nitter.net/TimesofIsrael/rss"},
-    {"name": "Ynet News", "url": "https://nitter.net/ynetnews/rss"},
-    {"name": "Israel Hayom", "url": "https://nitter.net/IsraelHayomEng/rss"}
-]
+def get_full_content(url):
+    """استخراج هوشمند متن کامل مقاله از سایت منبع"""
+    try:
+        article = Article(url)
+        article.download()
+        article.parse()
+        return article.text
+    except:
+        return ""
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS news 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                  title_fa TEXT, title_en TEXT, 
-                  desc_fa TEXT, desc_en TEXT, 
-                  source TEXT, link TEXT UNIQUE, pub_date TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
-    conn.commit()
-    conn.close()
-
-import json # این رو بالای فایل اضافه کن
-
-import json
-
-import json # این حتما باید خط اول فایل app.py باشد
-
-import json
-
-def send_telegram(title_and_en, description, source, date, news_id):
-    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN": return
-    
-    # آدرس خبر در سایت خودت (جایگزین لینک مستقیم منبع)
-    my_site_link = f"https://irananalysis.onrender.com/news/{news_id}"
-    
-    # خلاصه خبر برای تلگرام (مثلاً ۲۰۰ کاراکتر اول)
-    summary = description[:200] + "..." if len(description) > 200 else description
-    
-    # متن پیام (بدون لینک منبع خبر در متن، چون دکمه جایش را می‌گیرد)
-    text = (f"<b>منبع: {source}</b>\n"
-            f"📅 زمان: {date}\n\n"
-            f"<b>{title_and_en}</b>\n\n"
-            f"📝 خلاصه خبر:\n{summary}\n\n"
-            f"🆔 @KhabarAnalysBan")
-    
-    # ساخت دکمه شیشه‌ای
-    reply_markup = {
-        "inline_keyboard": [[
-            {"text": "📖 مطالعه مشروح کامل خبر در سایت", "url": my_site_link}
-        ]]
-    }
-    
+def send_to_telegram(title, summary, news_id, source_name):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    my_link = f"{MY_SITE_URL}/news/{news_id}"
+    
+    # متنی که در تلگرام نمایش داده می‌شود
+    message_text = (
+        f"🔴 <b>{title}</b>\n\n"
+        f"🔹 منبع: {source_name}\n"
+        f"📝 {summary[:300]}...\n\n"
+        f"🆔 @AnalytixNews"
+    )
+    
     payload = {
         "chat_id": CHAT_ID,
-        "text": text,
+        "text": message_text,
         "parse_mode": "HTML",
-        "reply_markup": json.dumps(reply_markup)
+        "reply_markup": {
+            "inline_keyboard": [[
+                {"text": "مشاهده شرح کامل در سایت من", "url": my_link}
+            ]]
+        }
     }
-    
-    try:
-        # ارسال با متد استاندارد JSON برای نمایش قطعی دکمه
-        requests.post(url, data=payload, timeout=15)
-    except:
-        pass
-def update_logic():
+    requests.post(url, json=payload)
+
+def update_news():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # ایجاد دیتابیس اگر وجود ندارد
+    c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link UNIQUE, pub_date TIMESTAMP)''')
     
-    # چک کردن زمان آخرین آپدیت (هر 5 دقیقه)
-    c.execute("SELECT value FROM settings WHERE key='last_update'")
-    row = c.fetchone()
-    if row and (time.time() - float(row[0]) < 300):
-        conn.close()
-        return
+    twelve_hours_ago = datetime.now(timezone.utc) - timedelta(hours=12)
+    
+    # در اینجا فقط چند منبع برای نمونه گذاشتم، لیست کامل خودت رو اضافه کن
+    SOURCES = [{"name": "Reuters", "url": "https://www.reutersagency.com/feed/"}] 
 
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    current_timestamp = time.time()
-    
     for src in SOURCES:
         try:
-            res = requests.get(src['url'], headers=headers, timeout=30)
+            res = requests.get(src['url'], timeout=15)
             soup = BeautifulSoup(res.content, "xml")
-            for item in soup.find_all('item')[:5]:
+            items = soup.find_all('item')
+            
+            for item in items:
                 link = item.link.text
+                pub_date = parsedate_to_datetime(item.pubDate.text)
                 
-                # مدیریت تاریخ و فیلتر 12 ساعت
-                raw_date = item.pubDate.text if item.pubDate else ""
-                try:
-                    dt = parsedate_to_datetime(raw_date)
-                    # فیلتر: اگر زمان انتشار بیش از 12 ساعت (43200 ثانیه) قبل بود، رد کن
-                    if (current_timestamp - dt.timestamp()) > 43200:
-                        continue
-                        
-                    sortable_date = dt.strftime('%Y-%m-%d %H:%M:%S')
-                    display_date = dt.strftime('%H:%M - %Y/%m/%d')
-                except:
-                    # اگر تاریخ خوانده نشد، برای احتیاط از زمان حال استفاده می‌کنیم
-                    sortable_date = time.strftime('%Y-%m-%d %H:%M:%S')
-                    display_date = "نامشخص"
-
+                if pub_date < twelve_hours_ago: continue
+                
                 c.execute("SELECT id FROM news WHERE link=?", (link,))
-                if not c.fetchone():
-                    title_en = item.title.text
-                    desc_raw = item.description.text if item.description else ""
-                    desc_en = BeautifulSoup(desc_raw, "html.parser").get_text()[:500]
-                    
-                    title_fa = translate_now(title_en)
-                    desc_fa = translate_now(desc_en)
-                    
-                    c.execute("""INSERT INTO news (title_fa, title_en, desc_fa, desc_en, source, link, pub_date) 
-                                 VALUES (?, ?, ?, ?, ?, ?, ?)""", 
-                              (title_fa, title_en, desc_fa, desc_en, src['name'], link, sortable_date))
-                    conn.commit()
-                    # این خط را در انتهای تابع update_logic پیدا و جایگزین کن:
-                    new_id = c.lastrowid
-                    send_telegram(title_fa, desc_fa, src['name'], new_id)
+                if c.fetchone(): continue
+                
+                # استخراج و ترجمه
+                full_eng_text = get_full_content(link)
+                title_fa = ai_translate(item.title.text)
+                desc_fa = ai_translate(full_eng_text if full_eng_text else item.description.text)
+                
+                c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
+                          (title_fa, desc_fa, src['name'], link, pub_date))
+                
+                news_id = c.lastrowid
+                conn.commit()
+                send_to_telegram(title_fa, desc_fa, news_id, src['name'])
         except: continue
-    
-    c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_update', ?)", (str(time.time()),))
-    conn.commit()
     conn.close()
-
-# اجرای اولیه دیتابیس
-init_db()
 
 @app.route('/')
-def index():
-    update_logic()
+def home():
+    update_news() # هر بار سایت باز بشه چک میکنه
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # مرتب‌سازی نزولی (DESC) برای قرارگیری جدیدترین‌ها در بالای لیست سایت
-    c.execute("SELECT title_fa, title_en, desc_fa, desc_en, source, pub_date FROM news ORDER BY pub_date DESC LIMIT 50")
-    news_data = []
-    for r in c.fetchall():
-        news_data.append({
-            "title_fa": r[0], "title_en": r[1],
-            "desc_fa": r[2], "desc_en": r[3],
-            "source": r[4], "date": r[5]
-        })
+    c.execute("SELECT id, title_fa, source, pub_date FROM news ORDER BY pub_date DESC")
+    news_list = c.fetchall()
     conn.close()
-    return render_template('index.html', news=news_data)
+    return render_template('index.html', news=news_list)
 
 @app.route('/news/<int:news_id>')
-def show_news(news_id):
+def news_detail(news_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # کشیدن اطلاعات خبر خاص از دیتابیس
     c.execute("SELECT title_fa, desc_fa, source, pub_date, link FROM news WHERE id=?", (news_id,))
-    row = c.fetchone()
+    data = c.fetchone()
     conn.close()
-    
-    if row:
-        # آماده‌سازی داده‌ها برای فرستادن به post.html
-        news_item = {
-            "title": row[0],
-            "content": row[1],
-            "source": row[2],
-            "date": row[3],
-            "original_link": row[4]
-        }
-        return render_template('post.html', item=news_item)
-    return "<h1>متاسفانه خبر مورد نظر پیدا نشد!</h1>", 404
+    if data:
+        return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
+    abort(404)
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000)
