@@ -17,44 +17,39 @@ MY_SITE_URL = "https://fxanlytix-news-np0s.onrender.com"
 DB_PATH = "news.db"
 
 def ai_translate(text):
-    """ترجمه هوشمند با حذف تگ‌های مخرب"""
     try:
         if not text: return ""
-        # پاکسازی متن از کدهای HTML که در عکس قبلی بود
-        clean_input = BeautifulSoup(text, "html.parser").get_text()
-        if len(clean_input.strip()) < 5: return clean_input
+        clean_input = BeautifulSoup(text, "html.parser").get_text().strip()
+        # اگر متن فارسی بود (مثل تابناک) ترجمه نکن
+        if any('\u0600' <= char <= '\u06FF' for char in clean_input[:20]):
+            return f"\u200f{clean_input}\u200f"
         
-        translated = translator.translate(clean_input, dest='fa').text
+        # ترجمه انگلیسی به فارسی
+        translated = translator.translate(clean_input, src='en', dest='fa').text
         return f"\u200f{translated}\u200f"
-    except Exception as e:
-        print(f"Translation Error: {e}")
-        return text # اگر ترجمه نشد، اصل متن رو برگردون که برنامه متوقف نشه
-
+    except:
+        return text
 def get_full_content(url):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     try:
-        # تنظیمات حرفه‌ای برای دور زدن سد ربات‌ها
+        # متد اول: استفاده از Newspaper
         article = Article(url)
-        config = article.config
-        config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        config.request_timeout = 20
-        
+        article.config.browser_user_agent = headers['User-Agent']
+        article.config.request_timeout = 15
         article.download()
         article.parse()
-        
-        content = article.text
-        # اگر باز هم خالی بود، یک شانس دوباره با روش مستقیم بهش می‌دیم
-        if not content or len(content) < 50:
-            res = requests.get(url, headers={'User-Agent': config.browser_user_agent}, timeout=15)
-            soup = BeautifulSoup(res.content, "html.parser")
-            # حذف المان‌های مزاحم
-            for s in soup(['script', 'style']): s.decompose()
-            content = soup.get_text(separator=' ', strip=True)
+        if len(article.text) > 100:
+            return article.text
             
-        return content[:3500]
-    except Exception as e:
-        print(f"Extraction failed: {e}")
+        # متد دوم (نجات): اگر متد اول متن کمی آورد، مستقیم کل صفحه رو می‌گیریم
+        res = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(res.content, "html.parser")
+        # پیدا کردن تگ‌های اصلی متن در اکثر سایت‌های خبری
+        paragraphs = soup.find_all('p')
+        text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
+        return text if len(text) > 100 else ""
+    except:
         return ""
-
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -92,9 +87,9 @@ def update_news():
     
     # استفاده از منابع معتبرتر که کمتر مسدود می‌کنند
     SOURCES = [
-        {"name": "رویترز", "url": "https://www.reutersagency.com/feed/"},
-        {"name": "تابناک", "url": "https://www.tabnak.ir/fa/rss/allnews"},
-        {"name": "ایران اینترنشنال", "url": "https://news.google.com/rss/search?q=Iran+International&hl=fa&gl=IR&ceid=IR:fa"}
+        {"name": "رویترز", "url": "https://www.reuters.com/arc/outboundfeeds/news-one/?outputType=xml"},
+        {"name": "ایران اینترنشنال", "url": "https://www.iranintl.com/rss/all"},
+        {"name": "تابناک", "url": "https://www.tabnak.ir/fa/rss/allnews"}
     ]
 
     for src in SOURCES:
