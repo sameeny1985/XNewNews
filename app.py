@@ -13,7 +13,7 @@ translator = Translator()
 
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@AnalytixNews"
-MY_SITE_URL = "https://irananalysis.onrender.com"
+MY_SITE_URL = "https://fxanlytix-news-np0s.onrender.com"
 DB_PATH = "news.db"
 
 def ai_translate(text):
