@@ -123,19 +123,6 @@ def send_to_telegram(title, summary, news_id, source_name):
         }, timeout=10)
     except:
         pass
-
-@app.route('/')
-def home():
-    # آپدیت در پس‌زمینه انجام شود تا سایت ارور 500 ندهد
-    threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=3).map(process_source, SOURCES)).start()
-    
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY id DESC LIMIT 50")
-    news_list = c.fetchall()
-    conn.close()
-    return render_template('index.html', news=news_list)
-
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
     conn = sqlite3.connect(DB_PATH)
