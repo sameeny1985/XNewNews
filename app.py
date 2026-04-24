@@ -32,13 +32,27 @@ def ai_translate(text):
 
 def get_full_content(url):
     try:
+        # تنظیمات حرفه‌ای برای دور زدن سد ربات‌ها
         article = Article(url)
-        article.config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        article.config.request_timeout = 15
+        config = article.config
+        config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        config.request_timeout = 20
+        
         article.download()
         article.parse()
-        return article.text[:3000]
-    except:
+        
+        content = article.text
+        # اگر باز هم خالی بود، یک شانس دوباره با روش مستقیم بهش می‌دیم
+        if not content or len(content) < 50:
+            res = requests.get(url, headers={'User-Agent': config.browser_user_agent}, timeout=15)
+            soup = BeautifulSoup(res.content, "html.parser")
+            # حذف المان‌های مزاحم
+            for s in soup(['script', 'style']): s.decompose()
+            content = soup.get_text(separator=' ', strip=True)
+            
+        return content[:3500]
+    except Exception as e:
+        print(f"Extraction failed: {e}")
         return ""
 
 def send_to_telegram(title, summary, news_id, source_name):
