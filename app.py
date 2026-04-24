@@ -22,21 +22,31 @@ RLM = "\u200f" # برای جلوگیری از بهم ریختگی متن
 def ai_translate(text):
     try:
         if not text or len(text.strip()) < 5: return ""
-        translated = translator.translate(text, dest='fa').text
-        return f"{RLM}{translated}{RLM}"
+        # ابتدا هر چی تگ HTML هست رو پاک می‌کنیم که کدها ترجمه نشن
+        clean_text = BeautifulSoup(text, "html.parser").get_text()
+        translated = translator.translate(clean_text, dest='fa').text
+        # استفاده از RLM برای فیکس کردن جهت متن
+        return f"\u200f{translated}\u200f"
     except:
         return text
 
 def get_full_content(url):
     try:
         article = Article(url)
+        # تنظیم User-Agent برای اینکه سایت‌ها ما رو مسدود نکنن
+        article.config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
         article.download()
         article.parse()
-        return article.text[:3000] # متن طولانی‌تر برای شرح کامل
-    except:
+        # فقط متن تمیز رو برمی‌گردونیم
+        return article.text
+    except Exception as e:
+        print(f"Error extracting content: {e}")
         return ""
 
 def send_to_telegram(title, summary, news_id, source_name):
+   # پاکسازی نهایی برای تلگرام
+    title = BeautifulSoup(title, "html.parser").get_text()
+    summary = BeautifulSoup(summary, "html.parser").get_text()[:300] 
     if not TOKEN: return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     
