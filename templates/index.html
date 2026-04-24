@@ -2,21 +2,96 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحلیل ایران | آخرین اخبار</title>
     <style>
-        body { font-family: Tahoma, Arial; background: #f4f4f4; padding: 20px; line-height: 1.6; }
-        .news-card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .title { color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.2em; }
-        /* جلوگیری از بهم ریختگی کلمات انگلیسی */
-        p, a, h1 { unicode-bidi: embed; direction: rtl; text-align: right; }
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+            text-align: right;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            background-color: #1a237e;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .news-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            unicode-bidi: embed;
+        }
+        .news-card:hover {
+            transform: translateY(-5px);
+        }
+        .title-link {
+            text-decoration: none;
+            color: #d32f2f;
+            font-size: 1.4rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .meta {
+            font-size: 0.85rem;
+            color: #757575;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .summary {
+            color: #424242;
+            line-height: 1.8;
+            font-size: 1rem;
+        }
+        .btn-more {
+            display: inline-block;
+            margin-top: 15px;
+            color: #1a237e;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .btn-more:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <h1>آخرین اخبار تحلیل ایران</h1>
-    {% for item in news %}
-    <div class="news-card">
-        <a href="/news/{{ item[0] }}" class="title">{{ item[1] }}</a>
-        <p>منبع: {{ item[2] }} | زمان: {{ item[3] }}</p>
+    <div class="container">
+        <header>
+            <h1>مرکز تحلیل اخبار ایران و جهان</h1>
+            <p>بروزرسانی لحظه‌ای اخبار ۱۲ ساعت گذشته</p>
+        </header>
+
+        {% for item in news %}
+        <div class="news-card">
+            <a href="/news/{{ item[0] }}" class="title-link">{{ item[1] }}</a>
+            <div class="meta">
+                <span>منبع: <b>{{ item[2] }}</b></span> | 
+                <span>زمان انتشار: {{ item[3] }}</span>
+            </div>
+            <div class="summary">
+                {{ item[4][:250] }}...
+            </div>
+            <a href="/news/{{ item[0] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </body>
 </html>
