@@ -29,9 +29,18 @@ SOURCES = [
     {"name": "دویچه وله", "url": "https://www.dw.com/fa/persian/s-3277"},
     {"name": "تایمز اسرائیل", "url": "https://www.timesofisrael.com/feed/"},
     {"name": "جروزالم پست", "url": "https://www.jpost.com/rss/rssfeeds.aspx?catid=1"},
+    {"name": "وال استریت ژورنال", "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml"},
+    {"name": "آسوشیتدپرس", "url": "https://news.google.com/rss/search?q=Associated+Press+official&hl=en-US&gl=US&ceid=US:en"},
+    {"name": "عفو بین‌الملل", "url": "https://www.amnesty.org/en/rss/"},
+    # توییترها (از طریق نایتر)
     {"name": "توییتر ترامپ", "url": "https://nitter.net/realDonaldTrump/rss"},
+    {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"},
     {"name": "توییتر نتانیاهو", "url": "https://nitter.net/netanyahu/rss"},
-    {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"}
+    {"name": "توییتر عراقچی", "url": "https://nitter.net/araghchi/rss"},
+    {"name": "توییتر محسن رضایی", "url": "https://nitter.net/ir_rezaee/rss"},
+    {"name": "توییتر قالیباف", "url": "https://nitter.net/mb_ghalibaf/rss"},
+    {"name": "سنتکام (CENTCOM)", "url": "https://nitter.net/CENTCOM/rss"},
+    {"name": "سازمان ملل", "url": "https://news.un.org/feed/view/en/rss.xml"}
 ]
 
 def ai_translate(text):
