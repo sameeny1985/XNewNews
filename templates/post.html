@@ -2,22 +2,84 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
     <style>
-        body { font-family: Tahoma, Arial; direction: rtl; padding: 30px; max-width: 800px; margin: auto; line-height: 1.8; }
-        .content { background: white; padding: 20px; border-radius: 10px; unicode-bidi: embed; }
-        .meta { color: #777; font-size: 0.9em; }
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.8;
+            direction: rtl;
+            text-align: right;
+        }
+        .post-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #eee;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #1a237e;
+            font-size: 1.8rem;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+        .post-meta {
+            background-color: #f9f9f9;
+            padding: 10px 15px;
+            border-right: 4px solid #d32f2f;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+            color: #616161;
+        }
+        .full-content {
+            font-size: 1.1rem;
+            color: #212121;
+            white-space: pre-wrap; /* حفظ فاصله‌ها و اینترهای متن اصلی */
+            unicode-bidi: embed; /* جلوگیری از بهم ریختگی کلمات انگلیسی لابلای فارسی */
+        }
+        .footer-links {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f2f5;
+        }
+        .back-link {
+            display: inline-block;
+            background-color: #1a237e;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+        .original-link {
+            color: #d32f2f;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
-    <h1>{{ title }}</h1>
-    <div class="meta">منبع: {{ source }} | تاریخ: {{ date }}</div>
-    <hr>
-    <div class="content">
-        {{ content | safe }}
+    <div class="post-container">
+        <h1>{{ title }}</h1>
+        
+        <div class="post-meta">
+            منبع خبر: <b>{{ source }}</b> <br>
+            تاریخ و زمان: {{ date }}
+        </div>
+
+        <div class="full-content">
+            {{ content }}
+        </div>
+
+        <div class="footer-links">
+            <a href="/" class="back-link">بازگشت به صفحه اصلی</a>
+            <a href="{{ original }}" target="_blank" class="original-link">مشاهده منبع اصلی خبر در سایت مرجع</a>
+        </div>
     </div>
-    <br>
-    <a href="{{ original }}">لینک به منبع اصلی خبر</a>
-    <br><br>
-    <a href="/">بازگشت به صفحه اصلی</a>
 </body>
 </html>
