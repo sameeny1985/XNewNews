@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import requests
+import threading
 from flask import Flask, render_template, abort
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
@@ -17,7 +18,7 @@ CHAT_ID = "@AnalytixNews"
 MY_SITE_URL = "https://fxanlytix-news-np0s.onrender.com"
 DB_PATH = "news.db"
 
-# لیست کامل منابع (RSS و واسطه‌های توییتر)
+# لیست منابع اصلاح شده برای پایداری
 SOURCES = [
     {"name": "رویترز", "url": "https://www.reuters.com/arc/outboundfeeds/news-one/?outputType=xml"},
     {"name": "ایران اینترنشنال", "url": "https://www.iranintl.com/rss/all"},
@@ -26,71 +27,45 @@ SOURCES = [
     {"name": "صدای آمریکا", "url": "https://ir.voanews.com/api/z-m_v_e-it"},
     {"name": "تسنیم", "url": "https://www.tasnimnews.com/fa/rss/feed/0/7/0/"},
     {"name": "دویچه وله", "url": "https://www.dw.com/fa/persian/s-3277"},
-    {"name": "آسوشیتدپرس", "url": "https://newsapi.org/v2/everything?q=associated-press&apiKey=YOUR_API_KEY"}, # نیاز به API رایگان newsapi.org دارد
-    {"name": "وال استریت ژورنال", "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml"},
     {"name": "تایمز اسرائیل", "url": "https://www.timesofisrael.com/feed/"},
     {"name": "جروزالم پست", "url": "https://www.jpost.com/rss/rssfeeds.aspx?catid=1"},
-    {"name": "Ynet News", "url": "https://www.ynetnews.com/Ext/App/TalkBack/CdaSampleRSS/0,12870,2,00.xml"},
-    {"name": "Israel Hayom", "url": "https://www.israelhayom.com/feed/"},
-    {"name": "i24 News", "url": "https://www.i24news.tv/en/rss/main"},
-    {"name": "من و تو", "url": "https://www.manototv.com/rss/news"},
-    {"name": "کیهان لندن", "url": "https://kayhan.london/fa/feed/"},
-    # بخش توییتر (از طریق نایتر Nitter - واسطه رایگان)
     {"name": "توییتر ترامپ", "url": "https://nitter.net/realDonaldTrump/rss"},
-    {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"},
     {"name": "توییتر نتانیاهو", "url": "https://nitter.net/netanyahu/rss"},
-    {"name": "توییتر عراقچی", "url": "https://nitter.net/araghchi/rss"},
-    {"name": "توییتر قالیباف", "url": "https://nitter.net/mb_ghalibaf/rss"},
-    {"name": "سنتکام", "url": "https://nitter.net/CENTCOM/rss"},
+    {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"}
 ]
 
-def ai_translate(text, src_lang='auto'):
+def ai_translate(text):
     try:
-        if not text or len(text.strip()) < 5: return text
-        # پاکسازی تگ‌ها
+        if not text: return ""
         clean_input = BeautifulSoup(text, "html.parser").get_text().strip()
-        # تشخیص خودکار زبان و ترجمه
-        translated = translator.translate(clean_input, dest='fa').text
-        return f"\u200f{translated}\u200f"
+        if any('\u0600' <= char <= '\u06FF' for char in clean_input[:30]):
+            return f"\u200f{clean_input}\u200f"
+        return f"\u200f{translator.translate(clean_input, dest='fa').text}\u200f"
     except:
         return text
 
 def get_full_content(url):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
         article = Article(url)
-        article.config.browser_user_agent = headers['User-Agent']
+        article.config.browser_user_agent = 'Mozilla/5.0'
         article.config.request_timeout = 10
-        article.download()
-        article.parse()
-        if len(article.text) > 150: return article.text
-        
-        # متد جایگزین (BS4)
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.content, "html.parser")
-        paragraphs = soup.find_all('p')
-        return " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 60])
+        article.download(); article.parse()
+        return article.text if len(article.text) > 100 else ""
     except:
         return ""
 
-def process_single_source(src):
-    """پردازش یک منبع به صورت مجزا برای جلوگیری از بلاک شدن کل سیستم"""
+def process_source(src):
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link TEXT UNIQUE, pub_date TIMESTAMP)''')
+        
         res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
         soup = BeautifulSoup(res.content, "xml")
-        time_limit = datetime.now(timezone.utc) - timedelta(hours=12)
+        limit = datetime.now(timezone.utc) - timedelta(hours=12)
 
-        for item in soup.find_all('item')[:3]: # از هر منبع فعلاً ۳ خبر داغ
+        for item in soup.find_all('item')[:2]:
             link = item.link.text
-            try:
-                pub_date = parsedate_to_datetime(item.pubDate.text)
-            except:
-                pub_date = datetime.now(timezone.utc)
-
-            if pub_date < time_limit: continue
-            
             c.execute("SELECT id FROM news WHERE link=?", (link,))
             if c.fetchone(): continue
 
@@ -101,42 +76,49 @@ def process_single_source(src):
             desc_fa = ai_translate(full_txt)
 
             c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
-                      (title_fa, desc_fa, src['name'], link, pub_date.isoformat()))
+                      (title_fa, desc_fa, src['name'], link, datetime.now().isoformat()))
             news_id = c.lastrowid
             conn.commit()
-            
-            # ارسال تلگرام
             send_to_telegram(title_fa, desc_fa, news_id, src['name'])
         conn.close()
-    except Exception as e:
-        print(f"Error in {src['name']}: {e}")
+    except:
+        pass
 
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    my_link = f"{MY_SITE_URL}/news/{news_id}"
-    clean_title = BeautifulSoup(title, "html.parser").get_text()
-    clean_summary = BeautifulSoup(summary, "html.parser").get_text()[:300]
-
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": f"🔴 <b>{clean_title}</b>\n\n🔹 منبع: {source_name}\n📝 {clean_summary}...\n\n🆔 @AnalytixNews",
-        "parse_mode": "HTML",
-        "reply_markup": {"inline_keyboard": [[{"text": "📖 مطالعه مشروح کامل خبر", "url": my_link}]]}
-    }
-    requests.post(url, json=payload, timeout=10)
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        requests.post(url, json={
+            "chat_id": CHAT_ID,
+            "text": f"🔴 <b>{title[:200]}</b>\n\n🔹 منبع: {source_name}\n📝 {summary[:300]}...\n\n🆔 @AnalytixNews",
+            "parse_mode": "HTML",
+            "reply_markup": {"inline_keyboard": [[{"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}]]}
+        }, timeout=10)
+    except:
+        pass
 
 @app.route('/')
 def home():
-    # استفاده از ThreadPool برای چک کردن همزمان همه منابع (سرعت فوق‌العاده بالا)
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        executor.map(process_single_source, SOURCES)
+    # آپدیت در پس‌زمینه انجام شود تا سایت ارور 500 ندهد
+    threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=3).map(process_source, SOURCES)).start()
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 50")
+    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY id DESC LIMIT 50")
     news_list = c.fetchall()
     conn.close()
     return render_template('index.html', news=news_list)
 
-# بقیه روت‌ها (news_detail و ...) مثل قبل باقی می‌ماند
+@app.route('/news/<int:news_id>')
+def news_detail(news_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT title_fa, desc_fa, source, pub_date, link FROM news WHERE id=?", (news_id,))
+    data = c.fetchone()
+    conn.close()
+    if data:
+        return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
+    abort(404)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
