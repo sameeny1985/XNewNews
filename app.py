@@ -58,14 +58,25 @@ def process_source(src):
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link TEXT UNIQUE, pub_date TIMESTAMP)''')
+        # اطمینان از وجود جدول با فیلد زمان
+        c.execute('''CREATE TABLE IF NOT EXISTS news 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, 
+                      source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
         
         res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
         soup = BeautifulSoup(res.content, "xml")
-        limit = datetime.now(timezone.utc) - timedelta(hours=12)
-
-        for item in soup.find_all('item')[:2]:
+        
+        for item in soup.find_all('item')[:5]: # بررسی ۵ خبر آخر هر منبع
             link = item.link.text
+            
+            # استخراج زمان واقعی انتشار خبر
+            try:
+                pub_date_raw = parsedate_to_datetime(item.pubDate.text)
+                # تبدیل به فرمت قابل فهم برای دیتابیس (ISO format)
+                pub_date_iso = pub_date_raw.strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             c.execute("SELECT id FROM news WHERE link=?", (link,))
             if c.fetchone(): continue
 
@@ -75,15 +86,31 @@ def process_source(src):
             title_fa = ai_translate(item.title.text)
             desc_fa = ai_translate(full_txt)
 
+            # ذخیره با زمان واقعی انتشار
             c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
-                      (title_fa, desc_fa, src['name'], link, datetime.now().isoformat()))
+                      (title_fa, desc_fa, src['name'], link, pub_date_iso))
+            
             news_id = c.lastrowid
             conn.commit()
+            
+            # ارسال به تلگرام (به محض پیدا شدن خبر جدید)
             send_to_telegram(title_fa, desc_fa, news_id, src['name'])
         conn.close()
     except:
         pass
 
+@app.route('/')
+def home():
+    # آپدیت در پس‌زمینه
+    threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=4).map(process_source, SOURCES)).start()
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # مرتب‌سازی بر اساس زمان انتشار (جدیدترین در بالای سایت)
+    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
+    news_list = c.fetchall()
+    conn.close()
+    return render_template('index.html', news=news_list)
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
     try:
