@@ -17,7 +17,7 @@ TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
 MY_SITE_URL = "https://xnewnews.onrender.com"
 DB_PATH = "news.db"
-
+update_lock = threading.Lock() # این خط مانع از انباشته شدن درخواست‌های تکراری می‌شود
 # لیست منابع اصلاح شده برای پایداری
 SOURCES = [
     {"name": "رویترز", "url": "https://www.reuters.com/arc/outboundfeeds/news-one/?outputType=xml"},
@@ -130,7 +130,7 @@ def process_source(src):
                      (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, 
                       source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
         
-        res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
+        res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
         soup = BeautifulSoup(res.content, "xml")
         
         for item in soup.find_all('item')[:5]: # بررسی ۵ خبر آخر هر منبع
@@ -178,13 +178,13 @@ def home():
     news_list = c.fetchall()
     conn.close()
     return render_template('index.html', news=news_list)
-def send_to_telegram(title, summary, news_id, source_name):
+def send_to_telegram(title, summary, news_id, source_name, pub_time):
     if not TOKEN: return
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         requests.post(url, json={
             "chat_id": CHAT_ID,
-            "text": f"🔴 <b>{title[:200]}</b>\n\n🔹 منبع: {source_name}\n📝 {summary[:300]}...\n\n🆔 @AnalytixNews",
+            "text": f"🔴 <b>{title[:200]}</b>\n\n🔹 منبع: {source_name}\n⏰ زمان: {pub_time}\n📝 {summary[:300]}...\n\n🆔 @XNewNews",
             "parse_mode": "HTML",
             "reply_markup": {"inline_keyboard": [[{"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}]]}
         }, timeout=10)
