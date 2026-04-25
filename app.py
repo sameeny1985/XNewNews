@@ -15,7 +15,7 @@ translator = Translator()
 
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@AnalytixNews"
-MY_SITE_URL = "https://fxanlytix-news-np0s.onrender.com"
+MY_SITE_URL = "https://fxanlytix-news-gga6.onrender.com"
 DB_PATH = "news.db"
 
 # لیست منابع اصلاح شده برای پایداری
