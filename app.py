@@ -14,7 +14,7 @@ app = Flask(__name__)
 translator = Translator()
 
 TOKEN = os.environ.get("TOKEN")
-CHAT_ID = "@AnalytixNews"
+CHAT_ID = "@XNewNewsMavara"
 MY_SITE_URL = "https://fxanlytix-news-gga6.onrender.com"
 DB_PATH = "news.db"
 
