@@ -15,7 +15,7 @@ translator = Translator()
 
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
-MY_SITE_URL = "https://xnewnews.onrender.com"
+MY_SITE_URL = "https://x-newnews.onrender.com"
 DB_PATH = "news.db"
 update_lock = threading.Lock() # این خط مانع از انباشته شدن درخواست‌های تکراری می‌شود
 # لیست منابع اصلاح شده برای پایداری
