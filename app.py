@@ -9,7 +9,7 @@ from email.utils import parsedate_to_datetime
 from googletrans import Translator
 from newspaper import Article
 from concurrent.futures import ThreadPoolExecutor
-
+import random
 app = Flask(__name__)
 translator = Translator()
 
@@ -260,4 +260,4 @@ def news_detail(news_id):
     abort(404)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
