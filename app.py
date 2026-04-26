@@ -260,4 +260,5 @@ def news_detail(news_id):
     abort(404)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    # مقدار پیش‌فرض را از 5000 به 8000 تغییر دادیم
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
