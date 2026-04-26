@@ -153,7 +153,7 @@ def process_source(src):
                     pub_date_raw = pub_date_raw.replace(tzinfo=timezone.utc)
                 
                 # اگر خبر قدیمی‌تر از ۱۲ ساعت بود، کلاً نادیده بگیر
-                if pub_date_raw < limit_time:
+                if pub_date_raw < (datetime.now(timezone.utc) - timedelta(hours=12)):
                     continue
                 
                 pub_date_iso = pub_date_raw.strftime('%Y-%m-%d %H:%M:%S')
@@ -175,8 +175,8 @@ def process_source(src):
             news_id = c.lastrowid
             conn.commit()
             
-            # ارسال به تلگرام (فقط خبرهای جدیدی که از فیلتر رد شدن)
-            send_to_telegram(title_fa, desc_fa, news_id, src['name'])
+            # پیدا کن این خط رو در انتهای پردازش هر خبر:
+            send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
             
         conn.close()
     except Exception as e:
@@ -205,15 +205,26 @@ def home():
     conn.close()
     
     return render_template('index.html', news=news_list)
-def send_to_telegram(title, summary, news_id, source_name):
+def send_to_telegram(title, summary, news_id, source_name, pub_date):
     if not TOKEN: return
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        # فرمت کردن متن پیام برای نمایش ساعت و تاریخ منبع
+        message_text = (
+            f"🔴 <b>{title[:200]}</b>\n\n"
+            f"🔹 منبع: {source_name}\n"
+            f"⏰ زمان انتشار منبع: {pub_date}\n"
+            f"📝 {summary[:300]}...\n\n"
+            f"🆔 @AnalytixNews"
+        )
+        
         requests.post(url, json={
             "chat_id": CHAT_ID,
-            "text": f"🔴 <b>{title[:200]}</b>\n\n🔹 منبع: {source_name}\n📝 {summary[:300]}...\n\n🆔 @AnalytixNews",
+            "text": message_text,
             "parse_mode": "HTML",
-            "reply_markup": {"inline_keyboard": [[{"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}]]}
+            "reply_markup": {
+                "inline_keyboard": [[{"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}]]
+            }
         }, timeout=10)
     except:
         pass
