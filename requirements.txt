@@ -6,3 +6,4 @@ lxml_html_clean
 newspaper3k
 googletrans==4.0.0-rc1
 gunicorn
+APScheduler
