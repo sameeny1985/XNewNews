@@ -125,7 +125,6 @@ def process_source(src):
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        # اطمینان از وجود جدول با فیلد زمان
         c.execute('''CREATE TABLE IF NOT EXISTS news 
                      (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, 
                       source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
@@ -133,50 +132,78 @@ def process_source(src):
         res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
         soup = BeautifulSoup(res.content, "xml")
         
-        for item in soup.find_all('item')[:5]: # بررسی ۵ خبر آخر هر منبع
+        # زمان الان به وقت جهانی (UTC) برای مقایسه دقیق
+        now = datetime.now(timezone.utc)
+        limit_time = now - timedelta(hours=12)
+
+        for item in soup.find_all('item')[:10]: # بررسی ۱۰ خبر آخر منبع
             link = item.link.text
             
-            # استخراج زمان واقعی انتشار خبر
+            # --- فیلتر ۱: جلوگیری از تکرار (اگر لینک در دیتابیس هست، برو بعدی) ---
+            c.execute("SELECT id FROM news WHERE link=?", (link,))
+            if c.fetchone():
+                continue
+
+            # --- فیلتر ۲: زمان (فقط ۱۲ ساعت اخیر) ---
             try:
+                # تبدیل تاریخ خبر به فرمت پایتون
                 pub_date_raw = parsedate_to_datetime(item.pubDate.text)
-                # تبدیل به فرمت قابل فهم برای دیتابیس (ISO format)
+                # اگر منطقه زمانی نداشت، بهش UTC بده که با 'now' مقایسه بشه
+                if pub_date_raw.tzinfo is None:
+                    pub_date_raw = pub_date_raw.replace(tzinfo=timezone.utc)
+                
+                # اگر خبر قدیمی‌تر از ۱۲ ساعت بود، کلاً نادیده بگیر
+                if pub_date_raw < limit_time:
+                    continue
+                
                 pub_date_iso = pub_date_raw.strftime('%Y-%m-%d %H:%M:%S')
             except:
+                # اگر تاریخ خبر خراب بود، زمان حال رو بزن که بیاد بالای لیست
                 pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            c.execute("SELECT id FROM news WHERE link=?", (link,))
-            if c.fetchone(): continue
-
+            # --- عملیات استخراج و ترجمه ---
             full_txt = get_full_content(link)
             if not full_txt: full_txt = item.description.text if item.description else ""
 
             title_fa = ai_translate(item.title.text)
             desc_fa = ai_translate(full_txt)
 
-            # ذخیره با زمان واقعی انتشار
+            # ذخیره در دیتابیس
             c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
                       (title_fa, desc_fa, src['name'], link, pub_date_iso))
             
             news_id = c.lastrowid
             conn.commit()
             
-            # ارسال به تلگرام (به محض پیدا شدن خبر جدید)
+            # ارسال به تلگرام (فقط خبرهای جدیدی که از فیلتر رد شدن)
             send_to_telegram(title_fa, desc_fa, news_id, src['name'])
+            
         conn.close()
-    except:
-        pass
-
+    except Exception as e:
+        print(f"Error: {e}")
 @app.route('/')
 def home():
-    # آپدیت در پس‌زمینه
+    # ۱. آپدیت در پس‌زمینه (همون مدل خودت با ۴ ورکر)
+    # این بخش اخبار جدید رو میگیره، ترجمه میکنه و میفرسته تلگرام
     threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=4).map(process_source, SOURCES)).start()
     
+    # ۲. اتصال به دیتابیس برای نمایش در سایت
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # مرتب‌سازی بر اساس زمان انتشار (جدیدترین در بالای سایت)
-    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
+    
+    # ۳. فیلتر نمایش در سایت (فقط اخبار ۱۲ ساعت اخیر + جدیدترین در بالا)
+    # اینجا شرط گذاشتم که در سایت هم فقط خبرهای ۱۲ ساعت اخیر رو نشون بده
+    query = """
+        SELECT id, title_fa, source, pub_date, desc_fa 
+        FROM news 
+        WHERE pub_date >= datetime('now', '-12 hours')
+        ORDER BY pub_date DESC 
+        LIMIT 60
+    """
+    c.execute(query)
     news_list = c.fetchall()
     conn.close()
+    
     return render_template('index.html', news=news_list)
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
