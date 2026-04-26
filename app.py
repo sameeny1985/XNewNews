@@ -92,15 +92,24 @@ SOURCES = [
     {"name": "Israel Hayom", "url": "https://nitter.net/IsraelHayomEng/rss"}
 ]
 
+import translators as ts
+
 def ai_translate(text):
     try:
         if not text: return ""
         clean_text = BeautifulSoup(text, "html.parser").get_text().strip()
-        # اگه فارسی بود ترجمه نکن
+
         if any('\u0600' <= char <= '\u06FF' for char in clean_text[:30]):
             return f"\u200f{clean_text}\u200f"
-        return f"\u200f{translator.translate(clean_text, dest='fa').text}\u200f"
-    except: return text
+
+        # استفاده از موتور Bing که برای فارسی بسیار روان‌تر عمل می‌کند
+        # بدون نیاز به API Key
+        translated = ts.translate_text(clean_text, from_language='auto', to_language='fa', engine='bing')
+        
+        return f"\u200f{translated}\u200f"
+    except Exception as e:
+        print(f"Translation Error: {e}")
+        return text
 
 def get_full_content(url):
     try:
