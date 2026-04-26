@@ -7,3 +7,4 @@ newspaper3k
 translators
 gunicorn
 APScheduler
+googletrans==4.0.0-rc1
