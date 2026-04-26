@@ -14,14 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import subprocess
 import sys
 
-def install_package(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-# نصب کتابخانه جدید به صورت خودکار
-try:
-    import translators
-except ImportError:
-    install_package('translators')
 app = Flask(__name__)
 translator = Translator()
 
