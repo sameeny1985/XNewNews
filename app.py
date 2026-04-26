@@ -84,10 +84,38 @@ def process_source(src):
             
             # حالا اطلاعات کامل (تیتر + متن ترجمه شده) به تلگرام فرستاده می‌شود
             send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
-            
-        conn.close()
-    except Exception as e: 
-        print(f"خطا در پردازش {src['name']}: {e}")
+def send_to_telegram(title, summary, news_id, source_name, pub_date):
+    if not TOKEN: 
+        print("خطا: توکن ربات تنظیم نشده است!")
+        return
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        
+        # متن پیام (تیتر + ۳۰۰ کاراکتر اول متن خبر)
+        message_text = (
+            f"🔴 <b>{title[:200]}</b>\n\n"
+            f"🔹 منبع: {source_name}\n"
+            f"⏰ زمان: {pub_date}\n"
+            f"📝 {summary[:300]}...\n\n"
+            f"🆔 @XNewNewsMavara"
+        )
+        
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": message_text,
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}
+                ]]
+            }
+        }
+        
+        response = requests.post(url, json=payload, timeout=15)
+        if response.status_code != 200:
+            print(f"خطا در ارسال به تلگرام: {response.text}")
+    except Exception as e:
+        print(f"خطای کلی تلگرام: {e}")
 def scheduled_update():
     print(f"شروع آپدیت خودکار: {datetime.now()}")
     shuffled = SOURCES.copy()
