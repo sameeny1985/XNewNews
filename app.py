@@ -2,6 +2,7 @@ import os
 import sqlite3
 import requests
 import random
+import threading
 from flask import Flask, render_template, abort
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
@@ -14,28 +15,32 @@ from apscheduler.schedulers.background import BackgroundScheduler
 app = Flask(__name__)
 translator = Translator()
 
-# تنظیمات محیطی (Environment Variables)
+# تنظیمات اصلی از محیط کویب
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
 MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app"
 DB_PATH = "news.db"
 
+# لیست منابع (RSS و Nitter)
 SOURCES = [
     {"name": "ایران اینترنشنال", "url": "https://www.iranintl.com/rss/all"},
     {"name": "بی بی سی فارسی", "url": "https://www.bbc.com/persian/index.xml"},
     {"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/z$qppe_kq_"},
     {"name": "دویچه وله", "url": "https://www.dw.com/fa/persian/s-3277"},
     {"name": "تایمز اسرائیل", "url": "https://www.timesofisrael.com/feed/"},
+    {"name": "جروزالم پست", "url": "https://www.jpost.com/rss/rssfeeds.aspx?catid=1"},
     {"name": "رویترز", "url": "https://www.reutersagency.com/feed/"},
     {"name": "توییتر ترامپ", "url": "https://nitter.cz/realDonaldTrump/rss"},
     {"name": "توییتر نتانیاهو", "url": "https://nitter.cz/netanyahu/rss"},
-    {"name": "توییتر رضا پهلوی", "url": "https://nitter.cz/PahlaviReza/rss"}
+    {"name": "توییتر رضا پهلوی", "url": "https://nitter.cz/PahlaviReza/rss"},
+    {"name": "سخنگوی سنتکام", "url": "https://nitter.cz/CENTCOM/rss"}
 ]
 
 def ai_translate(text):
     try:
         if not text: return ""
         clean_text = BeautifulSoup(text, "html.parser").get_text().strip()
+        # اگه فارسی بود ترجمه نکن
         if any('\u0600' <= char <= '\u06FF' for char in clean_text[:30]):
             return f"\u200f{clean_text}\u200f"
         return f"\u200f{translator.translate(clean_text, dest='fa').text}\u200f"
@@ -98,7 +103,8 @@ def process_source(src):
                 pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             full_txt = get_full_content(link)
-            if not full_txt: full_txt = item.description.text if item.description else "شرحی در دسترس نیست."
+            if not full_txt: 
+                full_txt = item.description.text if item.description else "شرحی در دسترس نیست."
 
             title_fa = ai_translate(item.title.text)
             desc_fa = ai_translate(full_txt)
@@ -107,17 +113,19 @@ def process_source(src):
                       (title_fa, desc_fa, src['name'], link, pub_date_iso))
             news_id = c.lastrowid
             conn.commit()
+            
             send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
         conn.close()
     except: pass
 
 def scheduled_update():
+    print(f"شروع آپدیت خودکار... {datetime.now()}")
     shuffled = SOURCES.copy()
     random.shuffle(shuffled)
     with ThreadPoolExecutor(max_workers=5) as executor:
         executor.map(process_source, shuffled)
 
-# تنظیمات زمان‌بندی (Scheduler)
+# تنظیم Scheduler برای اجرای هر 10 دقیقه
 scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(func=scheduled_update, trigger="interval", minutes=10)
 scheduler.start()
@@ -143,6 +151,6 @@ def news_detail(news_id):
     abort(404)
 
 if __name__ == "__main__":
-    # اجرای یک آپدیت اولیه هنگام شروع
+    # اجرای اولین آپدیت به محض روشن شدن سرور
     threading.Thread(target=scheduled_update).start()
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
