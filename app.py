@@ -9,7 +9,7 @@ from email.utils import parsedate_to_datetime
 from googletrans import Translator
 from newspaper import Article
 from concurrent.futures import ThreadPoolExecutor
-
+if pub_date_raw < (datetime.now(timezone.utc) - timedelta(hours=12)):
 app = Flask(__name__)
 translator = Translator()
 
