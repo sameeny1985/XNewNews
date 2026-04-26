@@ -248,23 +248,6 @@ def send_to_telegram(title, summary, news_id, source_name, pub_date):
         }, timeout=10)
     except:
         pass
-@app.route('/update-bot')
-def update_bot():
-    global is_updating
-    if not is_updating:
-        def update_wrapper():
-            global is_updating
-            is_updating = True
-            try:
-                shuff_src = SOURCES.copy()
-                random.shuffle(shuff_src)
-                with ThreadPoolExecutor(max_workers=8) as executor:
-                    executor.map(process_source, shuff_src)
-            finally:
-                is_updating = False
-        threading.Thread(target=update_wrapper, daemon=True).start()
-        return "Update started...", 200 # یک پاسخ خیلی کوتاه و سبک
-    return "Already updating...", 200
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
     conn = sqlite3.connect(DB_PATH)
