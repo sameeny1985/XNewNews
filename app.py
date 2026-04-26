@@ -21,7 +21,7 @@ translator = Translator()
 # تنظیمات اصلی از محیط کویب
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
-MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app"
+MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app/"
 DB_PATH = "news.db"
 
 # لیست منابع (RSS و Nitter)
