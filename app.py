@@ -168,20 +168,16 @@ def process_source(src):
 
 @app.route('/')
 def home():
+    # آپدیت در پس‌زمینه
+    threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=4).map(process_source, SOURCES)).start()
+    
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # مرتب‌سازی بر اساس زمان انتشار (جدیدترین در بالای سایت)
     c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
     conn.close()
     return render_template('index.html', news=news_list)
-@app.route('/ping')
-def ping():
-    return "", 204
-@app.route('/update')
-def update():
-    for src in SOURCES[:40]:
-        process_source(src)
-    return "ok"
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
     try:
@@ -204,5 +200,6 @@ def news_detail(news_id):
     if data:
         return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
     abort(404)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
