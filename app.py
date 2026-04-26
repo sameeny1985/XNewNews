@@ -167,7 +167,6 @@ def process_source(src):
         pass
 
 @app.route('/')
-@app.route('/')
 def home():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -180,9 +179,8 @@ def ping():
     return "", 204
 @app.route('/update')
 def update():
-    threading.Thread(
-        target=lambda: ThreadPoolExecutor(max_workers=1).map(process_source, SOURCES[:5])
-    ).start()
+    for src in SOURCES[:3]:
+        process_source(src)
     return "ok"
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
