@@ -4,7 +4,5 @@ beautifulsoup4
 lxml
 lxml_html_clean
 newspaper3k
-translators
-gunicorn
-APScheduler
 googletrans==4.0.0-rc1
+gunicorn
