@@ -200,32 +200,31 @@ def process_source(src):
         print(f"Error: {e}")
 is_updating = False  # این خط باید بیرون از تابع باشد
 
+# این متغیر برای جلوگیری از اجرای همزمان چند آپدیت است
+update_lock = threading.Lock()
+
+@app.route('/update-now')
+def update_now():
+    # این تابع صبر می‌کند تا تمام سورس‌ها چک شوند، سپس پاسخ می‌دهد
+    if update_lock.locked():
+        return "Update is already in progress...", 200
+    
+    with update_lock:
+        try:
+            shuffled_sources = SOURCES.copy()
+            random.shuffle(shuffled_sources)
+            
+            # اجرای مستقیم بدون ترد پس‌زمینه برای اینکه سرور کویب پردازش رو قطع نکنه
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(process_source, shuffled_sources)
+            
+            return "Update Finished Successfully!", 200
+        except Exception as e:
+            return f"Update Failed: {e}", 500
+
 @app.route('/')
 def home():
-    global is_updating
-    
-    # ۱. بررسی اینکه آیا آپدیت قبلی هنوز در حال اجراست یا نه
-    if not is_updating:
-        def update_wrapper():
-            global is_updating
-            is_updating = True
-            try:
-                # کپی کردن و بُر زدن سورس‌ها برای رعایت عدالت بین منابع!
-                shuffled_sources = SOURCES.copy()
-                random.shuffle(shuffled_sources)
-                
-                # اجرای آپدیت با ۸ ورکر (چون پلن پولی داری سرعت رو بردیم بالا)
-                with ThreadPoolExecutor(max_workers=8) as executor:
-                    executor.map(process_source, shuffled_sources)
-            except Exception as e:
-                print(f"Update Thread Error: {e}")
-            finally:
-                is_updating = False
-        
-        # شروع عملیات در پس‌زمینه
-        threading.Thread(target=update_wrapper, daemon=True).start()
-
-    # ۲. بخش نمایش سایت (نمایش اخبار ۱۲ ساعت اخیر با ترتیب جدیدترین)
+    # صفحه اصلی فقط خبرها رو از دیتابیس می‌خونه و دیگه خودش آپدیت نمی‌کنه
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -241,8 +240,7 @@ def home():
         conn.close()
         return render_template('index.html', news=news_list)
     except Exception as e:
-        return f"Database Error: {e}", 500
-def send_to_telegram(title, summary, news_id, source_name, pub_date):
+        return f"Database Error: {e}", 500def send_to_telegram(title, summary, news_id, source_name, pub_date):
     if not TOKEN: return
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
