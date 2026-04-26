@@ -49,6 +49,7 @@ def process_source(src):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
+        
         res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
         soup = BeautifulSoup(res.content, "xml")
         limit_time = datetime.now(timezone.utc) - timedelta(hours=12)
@@ -66,15 +67,27 @@ def process_source(src):
             except:
                 pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            title_fa = ai_translate(item.title.text)
-            c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
-                      (title_fa, "توضیحات در سایت", src['name'], link, pub_date_iso))
-            conn.commit()
-            # کد ارسال به تلگرام در اینجا فراخوانی شود...
-        conn.close()
-    except: pass
+            # --- بخش اصلاح شده برای ترجمه متن خبر ---
+            # ابتدا سعی می‌کند متن کامل را از لینک اصلی استخراج کند
+            full_txt = get_full_content(link)
+            # اگر نشد، از همان توضیحات کوتاه RSS استفاده می‌کند
+            if not full_txt: 
+                full_txt = item.description.text if item.description else "متنی یافت نشد"
 
-# --- تابع آپدیت که قراره زمان‌بندی بشه ---
+            title_fa = ai_translate(item.title.text)
+            desc_fa = ai_translate(full_txt) # حالا متن خبر هم ترجمه می‌شود
+
+            c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
+                      (title_fa, desc_fa, src['name'], link, pub_date_iso))
+            news_id = c.lastrowid
+            conn.commit()
+            
+            # حالا اطلاعات کامل (تیتر + متن ترجمه شده) به تلگرام فرستاده می‌شود
+            send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
+            
+        conn.close()
+    except Exception as e: 
+        print(f"خطا در پردازش {src['name']}: {e}")
 def scheduled_update():
     print(f"شروع آپدیت خودکار: {datetime.now()}")
     shuffled = SOURCES.copy()
