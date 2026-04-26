@@ -223,7 +223,7 @@ def send_to_telegram(title, summary, news_id, source_name, pub_date):
             f"🔹 منبع: {source_name}\n"
             f"⏰ زمان انتشار منبع: {pub_date}\n"
             f"📝 {summary[:300]}...\n\n"
-            f"🆔 @XNewNews"
+            f"🆔 @XNewNewsMavara"
         )
         
         requests.post(url, json={
