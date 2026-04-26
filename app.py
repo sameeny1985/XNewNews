@@ -179,7 +179,7 @@ def ping():
     return "", 204
 @app.route('/update')
 def update():
-    for src in SOURCES[:3]:
+    for src in SOURCES[:40]:
         process_source(src)
     return "ok"
 def send_to_telegram(title, summary, news_id, source_name):
