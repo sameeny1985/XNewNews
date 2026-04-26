@@ -181,7 +181,7 @@ def ping():
 @app.route('/update')
 def update():
     threading.Thread(
-        target=lambda: ThreadPoolExecutor(max_workers=2).map(process_source, SOURCES[:10])
+        target=lambda: ThreadPoolExecutor(max_workers=1).map(process_source, SOURCES[:5])
     ).start()
     return "ok"
 def send_to_telegram(title, summary, news_id, source_name):
