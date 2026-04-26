@@ -4,5 +4,5 @@ beautifulsoup4
 lxml
 lxml_html_clean
 newspaper3k
-googletrans==3.1.0a0
+googletrans==4.0.0-rc1
 gunicorn
