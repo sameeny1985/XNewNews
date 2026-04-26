@@ -181,30 +181,50 @@ def process_source(src):
         conn.close()
     except Exception as e:
         print(f"Error: {e}")
+is_updating = False  # این خط باید بیرون از تابع باشد
+
 @app.route('/')
 def home():
-    # ۱. آپدیت در پس‌زمینه (همون مدل خودت با ۴ ورکر)
-    # این بخش اخبار جدید رو میگیره، ترجمه میکنه و میفرسته تلگرام
-    threading.Thread(target=lambda: ThreadPoolExecutor(max_workers=4).map(process_source, SOURCES)).start()
+    global is_updating
     
-    # ۲. اتصال به دیتابیس برای نمایش در سایت
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # ۳. فیلتر نمایش در سایت (فقط اخبار ۱۲ ساعت اخیر + جدیدترین در بالا)
-    # اینجا شرط گذاشتم که در سایت هم فقط خبرهای ۱۲ ساعت اخیر رو نشون بده
-    query = """
-        SELECT id, title_fa, source, pub_date, desc_fa 
-        FROM news 
-        WHERE pub_date >= datetime('now', '-12 hours')
-        ORDER BY pub_date DESC 
-        LIMIT 60
-    """
-    c.execute(query)
-    news_list = c.fetchall()
-    conn.close()
-    
-    return render_template('index.html', news=news_list)
+    # ۱. بررسی اینکه آیا آپدیت قبلی هنوز در حال اجراست یا نه
+    if not is_updating:
+        def update_wrapper():
+            global is_updating
+            is_updating = True
+            try:
+                # کپی کردن و بُر زدن سورس‌ها برای رعایت عدالت بین منابع!
+                shuffled_sources = SOURCES.copy()
+                random.shuffle(shuffled_sources)
+                
+                # اجرای آپدیت با ۸ ورکر (چون پلن پولی داری سرعت رو بردیم بالا)
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    executor.map(process_source, shuffled_sources)
+            except Exception as e:
+                print(f"Update Thread Error: {e}")
+            finally:
+                is_updating = False
+        
+        # شروع عملیات در پس‌زمینه
+        threading.Thread(target=update_wrapper, daemon=True).start()
+
+    # ۲. بخش نمایش سایت (نمایش اخبار ۱۲ ساعت اخیر با ترتیب جدیدترین)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        query = """
+            SELECT id, title_fa, source, pub_date, desc_fa 
+            FROM news 
+            WHERE pub_date >= datetime('now', '-12 hours')
+            ORDER BY pub_date DESC 
+            LIMIT 60
+        """
+        c.execute(query)
+        news_list = c.fetchall()
+        conn.close()
+        return render_template('index.html', news=news_list)
+    except Exception as e:
+        return f"Database Error: {e}", 500
 def send_to_telegram(title, summary, news_id, source_name, pub_date):
     if not TOKEN: return
     try:
