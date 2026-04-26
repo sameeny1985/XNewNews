@@ -96,24 +96,35 @@ SOURCES = [
 ]
 
 import translators as ts
+import time
 
 def ai_translate(text):
+    if not text or len(text.strip()) < 5: 
+        return text
+    
     try:
-        if not text: return ""
+        # ۱. تمیز کردن متن از فاصله‌های اضافی
         clean_text = BeautifulSoup(text, "html.parser").get_text().strip()
 
-        if any('\u0600' <= char <= '\u06FF' for char in clean_text[:30]):
+        # ۲. بررسی هوشمندتر: فقط اگه بیش از ۵۰٪ متن فارسی بود ترجمه نکن
+        # اینطوری اگه اول متن انگلیسی دوتا کلمه فارسی هم باشه، باز ترجمه انجام میشه
+        farsi_chars = sum(1 for char in clean_text[:50] if '\u0600' <= char <= '\u06FF')
+        if farsi_chars > (len(clean_text[:50]) / 2):
             return f"\u200f{clean_text}\u200f"
 
-        # استفاده از موتور Bing که برای فارسی بسیار روان‌تر عمل می‌کند
-        # بدون نیاز به API Key
-        translated = ts.translate_text(clean_text, from_language='auto', to_language='fa', engine='bing')
+        # ۳. وقفه کوتاه برای دور زدن سیستم امنیتی مترجم
+        time.sleep(1)
+
+        # ۴. استفاده از موتور گوگل از طریق کتابخانه جدید (پایدارتر از قبلی)
+        # اگه bing اذیت میکرد، اینجا از 'google' استفاده کن
+        translated = ts.translate_text(clean_text, from_language='auto', to_language='fa', engine='google')
         
         return f"\u200f{translated}\u200f"
-    except Exception as e:
-        print(f"Translation Error: {e}")
-        return text
 
+    except Exception as e:
+        # ۵. اینجا مچ کد رو میگیریم؛ اگه ترجمه نشد یه علامت بذار که بفهمی ارور داده
+        print(f"!!! Translation Failed: {e}")
+        return f"[ترجمه نشده]: {text}"
 def get_full_content(url):
     try:
         article = Article(url)
@@ -126,27 +137,37 @@ def get_full_content(url):
 def send_to_telegram(title, summary, news_id, source_name, pub_date):
     if not TOKEN: return
     try:
+        # این دو خط پایین جادوی اصلیه؛ متن انگلیسی رو میگیره و فارسی میکنه
+        farsi_title = ai_translate(title)
+        farsi_summary = ai_translate(summary)
+        
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        
+        # اینجا از متن‌های فارسی شده (farsi_title و farsi_summary) استفاده می‌کنیم
         message_text = (
-            f"🔴 <b>{title[:200]}</b>\n\n"
+            f"🔴 <b>{farsi_title}</b>\n\n"
             f"🔹 منبع: {source_name}\n"
             f"⏰ زمان: {pub_date}\n"
-            f"📝 {summary[:300]}...\n\n"
+            f"📝 {farsi_summary[:400]}...\n\n"
             f"🆔 @XNewNewsMavara"
         )
+        
         payload = {
             "chat_id": CHAT_ID,
             "text": message_text,
             "parse_mode": "HTML",
             "reply_markup": {
                 "inline_keyboard": [[
-                    {"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}
+                    {"text": "📖 مشاهده کامل خبر", "url": f"{MY_SITE_URL}/news/{news_id}"}
                 ]]
             }
         }
-        requests.post(url, json=payload, timeout=10)
-    except: pass
-
+        
+        # ارسال نهایی به تلگرام
+        requests.post(url, json=payload, timeout=12)
+        
+    except Exception as e:
+        print(f"خطا در ارسال تلگرام: {e}")
 def process_source(src):
     try:
         conn = sqlite3.connect(DB_PATH)
