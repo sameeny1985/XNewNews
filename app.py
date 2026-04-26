@@ -9,32 +9,29 @@ from email.utils import parsedate_to_datetime
 from googletrans import Translator
 from newspaper import Article
 from concurrent.futures import ThreadPoolExecutor
-# اضافه کردن کتابخانه زمان‌بندی حرفه‌ای
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 translator = Translator()
 
+# تنظیمات محیطی (Environment Variables)
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
-MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app/"
+MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app"
 DB_PATH = "news.db"
 
-# --- لیست منابع ---
 SOURCES = [
     {"name": "ایران اینترنشنال", "url": "https://www.iranintl.com/rss/all"},
     {"name": "بی بی سی فارسی", "url": "https://www.bbc.com/persian/index.xml"},
     {"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/z$qppe_kq_"},
     {"name": "دویچه وله", "url": "https://www.dw.com/fa/persian/s-3277"},
     {"name": "تایمز اسرائیل", "url": "https://www.timesofisrael.com/feed/"},
-    {"name": "جروزالم پست", "url": "https://www.jpost.com/rss/rssfeeds.aspx?catid=1"},
     {"name": "رویترز", "url": "https://www.reutersagency.com/feed/"},
     {"name": "توییتر ترامپ", "url": "https://nitter.cz/realDonaldTrump/rss"},
     {"name": "توییتر نتانیاهو", "url": "https://nitter.cz/netanyahu/rss"},
     {"name": "توییتر رضا پهلوی", "url": "https://nitter.cz/PahlaviReza/rss"}
 ]
 
-# --- توابع اصلی (بدون تغییر نسبت به قبل) ---
 def ai_translate(text):
     try:
         if not text: return ""
@@ -43,6 +40,39 @@ def ai_translate(text):
             return f"\u200f{clean_text}\u200f"
         return f"\u200f{translator.translate(clean_text, dest='fa').text}\u200f"
     except: return text
+
+def get_full_content(url):
+    try:
+        article = Article(url)
+        article.config.browser_user_agent = 'Mozilla/5.0'
+        article.download()
+        article.parse()
+        return article.text if len(article.text) > 100 else ""
+    except: return ""
+
+def send_to_telegram(title, summary, news_id, source_name, pub_date):
+    if not TOKEN: return
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        message_text = (
+            f"🔴 <b>{title[:200]}</b>\n\n"
+            f"🔹 منبع: {source_name}\n"
+            f"⏰ زمان: {pub_date}\n"
+            f"📝 {summary[:300]}...\n\n"
+            f"🆔 @XNewNewsMavara"
+        )
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": message_text,
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}
+                ]]
+            }
+        }
+        requests.post(url, json=payload, timeout=10)
+    except: pass
 
 def process_source(src):
     try:
@@ -67,66 +97,28 @@ def process_source(src):
             except:
                 pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            # --- بخش اصلاح شده برای ترجمه متن خبر ---
-            # ابتدا سعی می‌کند متن کامل را از لینک اصلی استخراج کند
             full_txt = get_full_content(link)
-            # اگر نشد، از همان توضیحات کوتاه RSS استفاده می‌کند
-            if not full_txt: 
-                full_txt = item.description.text if item.description else "متنی یافت نشد"
+            if not full_txt: full_txt = item.description.text if item.description else "شرحی در دسترس نیست."
 
             title_fa = ai_translate(item.title.text)
-            desc_fa = ai_translate(full_txt) # حالا متن خبر هم ترجمه می‌شود
+            desc_fa = ai_translate(full_txt)
 
             c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
                       (title_fa, desc_fa, src['name'], link, pub_date_iso))
             news_id = c.lastrowid
             conn.commit()
-            
-            # حالا اطلاعات کامل (تیتر + متن ترجمه شده) به تلگرام فرستاده می‌شود
             send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
-def send_to_telegram(title, summary, news_id, source_name, pub_date):
-    if not TOKEN: 
-        print("خطا: توکن ربات تنظیم نشده است!")
-        return
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        
-        # متن پیام (تیتر + ۳۰۰ کاراکتر اول متن خبر)
-        message_text = (
-            f"🔴 <b>{title[:200]}</b>\n\n"
-            f"🔹 منبع: {source_name}\n"
-            f"⏰ زمان: {pub_date}\n"
-            f"📝 {summary[:300]}...\n\n"
-            f"🆔 @XNewNewsMavara"
-        )
-        
-        payload = {
-            "chat_id": CHAT_ID,
-            "text": message_text,
-            "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": [[
-                    {"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}
-                ]]
-            }
-        }
-        
-        response = requests.post(url, json=payload, timeout=15)
-        if response.status_code != 200:
-            print(f"خطا در ارسال به تلگرام: {response.text}")
-    except Exception as e:
-        print(f"خطای کلی تلگرام: {e}")
+        conn.close()
+    except: pass
+
 def scheduled_update():
-    print(f"شروع آپدیت خودکار: {datetime.now()}")
     shuffled = SOURCES.copy()
     random.shuffle(shuffled)
     with ThreadPoolExecutor(max_workers=5) as executor:
         executor.map(process_source, shuffled)
-    print("آپدیت خودکار با موفقیت انجام شد.")
 
-# --- راه‌اندازی زمان‌بند (Scheduler) ---
+# تنظیمات زمان‌بندی (Scheduler)
 scheduler = BackgroundScheduler(daemon=True)
-# تنظیم اجرای آپدیت هر ۱۰ دقیقه یک‌بار
 scheduler.add_job(func=scheduled_update, trigger="interval", minutes=10)
 scheduler.start()
 
@@ -134,12 +126,23 @@ scheduler.start()
 def home():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT id, title_fa, source, pub_date FROM news WHERE pub_date >= datetime('now', '-12 hours') ORDER BY pub_date DESC LIMIT 60")
+    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news WHERE pub_date >= datetime('now', '-12 hours') ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
     conn.close()
     return render_template('index.html', news=news_list)
 
+@app.route('/news/<int:news_id>')
+def news_detail(news_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT title_fa, desc_fa, source, pub_date, link FROM news WHERE id=?", (news_id,))
+    data = c.fetchone()
+    conn.close()
+    if data:
+        return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
+    abort(404)
+
 if __name__ == "__main__":
-    # اجرای یک آپدیت اولیه بلافاصله بعد از بالا آمدن سرور
-    scheduled_update()
+    # اجرای یک آپدیت اولیه هنگام شروع
+    threading.Thread(target=scheduled_update).start()
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
