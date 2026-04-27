@@ -183,32 +183,32 @@ def process_source(src):
         print(f"Error: {e}")
 is_updating = False  # این خط باید بیرون از تابع باشد
 
+# --- مکانیزم آپدیت خودکار ---
+import time
+
+def auto_update_worker():
+    """تابعی که در یک ترد جداگانه هر ۵ دقیقه اخبار را چک می‌کند"""
+    print("Auto-update worker started...")
+    while True:
+        try:
+            print(f"Starting update cycle at {datetime.now()}")
+            shuffled_sources = SOURCES.copy()
+            random.shuffle(shuffled_sources)
+            
+            # اجرای آپدیت با ورکرها
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                executor.map(process_source, shuffled_sources)
+            
+            print("Update cycle finished. Sleeping for 5 minutes...")
+        except Exception as e:
+            print(f"Error in auto_update_worker: {e}")
+        
+        # ۵ دقیقه انتظار
+        time.sleep(300)
+
 @app.route('/')
 def home():
-    global is_updating
-    
-    # ۱. بررسی اینکه آیا آپدیت قبلی هنوز در حال اجراست یا نه
-    if not is_updating:
-        def update_wrapper():
-            global is_updating
-            is_updating = True
-            try:
-                # کپی کردن و بُر زدن سورس‌ها برای رعایت عدالت بین منابع!
-                shuffled_sources = SOURCES.copy()
-                random.shuffle(shuffled_sources)
-                
-                # اجرای آپدیت با ۸ ورکر (چون پلن پولی داری سرعت رو بردیم بالا)
-                with ThreadPoolExecutor(max_workers=8) as executor:
-                    executor.map(process_source, shuffled_sources)
-            except Exception as e:
-                print(f"Update Thread Error: {e}")
-            finally:
-                is_updating = False
-        
-        # شروع عملیات در پس‌زمینه
-        threading.Thread(target=update_wrapper, daemon=True).start()
-
-    # ۲. بخش نمایش سایت (نمایش اخبار ۱۲ ساعت اخیر با ترتیب جدیدترین)
+    # حالا دیگر نیازی نیست اینجا آپدیت کنیم، فقط اخبار را نمایش می‌دهیم
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -225,7 +225,16 @@ def home():
         return render_template('index.html', news=news_list)
     except Exception as e:
         return f"Database Error: {e}", 500
-def send_to_telegram(title, summary, news_id, source_name, pub_date):
+
+# سایر Routeها مثل news_detail اینجا بمانند...
+
+if __name__ == "__main__":
+    # ایجاد و شروع ترد آپدیت خودکار قبل از اجرای وب‌سرور
+    update_thread = threading.Thread(target=auto_update_worker, daemon=True)
+    update_thread.start()
+    
+    # اجرای اپلیکیشن
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))def send_to_telegram(title, summary, news_id, source_name, pub_date):
     if not TOKEN: return
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -258,6 +267,10 @@ def news_detail(news_id):
     if data:
         return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
     abort(404)
+
+# این خطوط را دقیقاً قبل از تعریف @app.route یا در انتهای فایل (بدون تورفتگی) بنویسید
+update_thread = threading.Thread(target=auto_update_worker, daemon=True)
+update_thread.start()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
