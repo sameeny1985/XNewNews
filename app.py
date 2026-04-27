@@ -316,6 +316,21 @@ def search():
     conn.close()
 
     return render_template('index.html', news=news_list)
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    c.execute('''CREATE TABLE IF NOT EXISTS news 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  title_fa TEXT,
+                  desc_fa TEXT,
+                  source TEXT,
+                  link TEXT UNIQUE,
+                  pub_date DATETIME,
+                  category TEXT)''')
+
+    conn.commit()
+    conn.close()
 def background_updater():
     while True:
         print("🔄 Updating news...")
@@ -331,5 +346,7 @@ def background_updater():
 
         time.sleep(300)  # هر 5 دقیقه
 if __name__ == "__main__":
+    init_db()  # 👈 این خط رو اضافه کن
+
     threading.Thread(target=background_updater, daemon=True).start()
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
