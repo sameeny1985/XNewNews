@@ -109,7 +109,7 @@ def home():
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT id, title_fa, source, pub_date FROM news ORDER BY pub_date DESC LIMIT 60")
+    c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
     conn.close()
     return render_template('index.html', news=news_list)
