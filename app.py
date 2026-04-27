@@ -1,4 +1,5 @@
 import os
+import time
 import sqlite3
 import requests
 import threading
@@ -89,13 +90,11 @@ SOURCES = [
     {"name": "Israel Hayom", "url": "https://nitter.net/IsraelHayomEng/rss"}
 ]
 
+from deep_translator import GoogleTranslator
+
 def ai_translate(text):
     try:
-        if not text: return ""
-        clean_input = BeautifulSoup(text, "html.parser").get_text().strip()
-        if any('\u0600' <= char <= '\u06FF' for char in clean_input[:30]):
-            return f"\u200f{clean_input}\u200f"
-        return f"\u200f{translator.translate(clean_input, dest='fa').text}\u200f"
+        return GoogleTranslator(source='auto', target='fa').translate(text)
     except:
         return text
 
@@ -170,7 +169,17 @@ def process_source(src):
     except Exception as e:
         print(f"Error: {e}")
 is_updating = False  # این خط باید بیرون از تابع باشد
+def categorize(text):
+    text = text.lower()
 
+    if "iran" in text or "tehran" in text:
+        return "ایران"
+    elif "economy" in text or "market" in text:
+        return "اقتصادی"
+    elif "war" in text or "military" in text:
+        return "سیاسی"
+    else:
+        return "جهان"
 @app.route('/')
 def home():
     global is_updating
@@ -236,6 +245,22 @@ def send_to_telegram(title, summary, news_id, source_name, pub_date):
         }, timeout=10)
     except:
         pass
+import time
+
+def background_updater():
+    while True:
+        print("🔄 Updating news...")
+        try:
+            shuffled_sources = SOURCES.copy()
+            random.shuffle(shuffled_sources)
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(process_source, shuffled_sources)
+
+        except Exception as e:
+            print("Update error:", e)
+
+        time.sleep(300)  # هر 5 دقیقه
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
     conn = sqlite3.connect(DB_PATH)
@@ -246,6 +271,20 @@ def news_detail(news_id):
     if data:
         return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
     abort(404)
+def background_updater():
+    while True:
+        print("🔄 Updating news...")
+        try:
+            shuffled_sources = SOURCES.copy()
+            random.shuffle(shuffled_sources)
 
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(process_source, shuffled_sources)
+
+        except Exception as e:
+            print("Update error:", e)
+
+        time.sleep(300)  # هر 5 دقیقه
 if __name__ == "__main__":
+    threading.Thread(target=background_updater, daemon=True).start()
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
