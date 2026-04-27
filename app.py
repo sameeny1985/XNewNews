@@ -304,12 +304,13 @@ def force_update():
         shuffled_sources = SOURCES.copy()
         random.shuffle(shuffled_sources)
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            executor.map(process_source, shuffled_sources)
+        for src in shuffled_sources[:3]:  # فقط 3 تا برای تست
+            process_source(src)
 
         return "✅ اخبار گرفته شد"
+
     except Exception as e:
-        return f"❌ Error: {e}"
+        return f"❌ ERROR: {str(e)}"
 @app.route('/search')
 def search():
     q = request.args.get('q')
@@ -359,6 +360,6 @@ def background_updater():
         time.sleep(300)  # هر 5 دقیقه
 if __name__ == "__main__":
     init_db()  # 👈 این خط رو اضافه کن
-
+    app.debug = True
     threading.Thread(target=background_updater, daemon=True).start()
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
