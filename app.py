@@ -346,14 +346,9 @@ def init_db():
     conn.close()
 def background_updater():
     while True:
-        print("🔄 Updating news...")
         try:
-            shuffled_sources = SOURCES.copy()
-            random.shuffle(shuffled_sources)
-
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                executor.map(process_source, shuffled_sources)
-
+            for src in SOURCES:
+                process_source(src)
         except Exception as e:
             print("Update error:", e)
 
