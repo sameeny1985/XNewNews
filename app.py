@@ -7,12 +7,13 @@ from flask import Flask, render_template, abort
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from googletrans import Translator
 from newspaper import Article
 from concurrent.futures import ThreadPoolExecutor
 import random
+from deep_translator import GoogleTranslator
+from flask import request
 app = Flask(__name__)
-translator = Translator()
+
 
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
@@ -94,10 +95,30 @@ from deep_translator import GoogleTranslator
 
 def ai_translate(text):
     try:
-        return GoogleTranslator(source='auto', target='fa').translate(text)
+        if not text:
+            return ""
+
+        clean_text = BeautifulSoup(text, "html.parser").get_text().strip()
+
+        # اگر فارسی بود ترجمه نکن
+        if any('\u0600' <= c <= '\u06FF' for c in clean_text[:50]):
+            return clean_text
+
+        return GoogleTranslator(source='auto', target='fa').translate(clean_text)
+
     except:
         return text
+def categorize(text):
+    text = text.lower()
 
+    if "iran" in text or "tehran" in text:
+        return "ایران"
+    elif "econom" in text or "market" in text:
+        return "اقتصادی"
+    elif "war" in text or "military" in text:
+        return "سیاسی"
+    else:
+        return "جهان"
 def get_full_content(url):
     try:
         article = Article(url)
@@ -113,8 +134,13 @@ def process_source(src):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS news 
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, 
-                      source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
+             (id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title_fa TEXT,
+              desc_fa TEXT,
+              source TEXT,
+              link TEXT UNIQUE,
+              pub_date DATETIME,
+              category TEXT)''')
         
         res = requests.get(src['url'], headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
         soup = BeautifulSoup(res.content, "xml")
@@ -154,16 +180,16 @@ def process_source(src):
 
             title_fa = ai_translate(item.title.text)
             desc_fa = ai_translate(full_txt)
-
+            category = categorize(full_txt)
             # ذخیره در دیتابیس
-            c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)",
-                      (title_fa, desc_fa, src['name'], link, pub_date_iso))
+            c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date, category) VALUES (?, ?, ?, ?, ?)",
+                      (title_fa, desc_fa, src['name'], link, pub_date_iso, category))
             
             news_id = c.lastrowid
             conn.commit()
             
             # پیدا کن این خط رو در انتهای پردازش هر خبر:
-            send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
+            send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso, category)
             
         conn.close()
     except Exception as e:
@@ -222,13 +248,14 @@ def home():
         return render_template('index.html', news=news_list)
     except Exception as e:
         return f"Database Error: {e}", 500
-def send_to_telegram(title, summary, news_id, source_name, pub_date):
+def send_to_telegram(title, summary, news_id, source_name, pub_date, category):
     if not TOKEN: return
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         # فرمت کردن متن پیام برای نمایش ساعت و تاریخ منبع
         message_text = (
             f"🔴 <b>{title[:200]}</b>\n\n"
+            f"📂 دسته: {category}\n"
             f"🔹 منبع: {source_name}\n"
             f"⏰ زمان انتشار منبع: {pub_date}\n"
             f"📝 {summary[:300]}...\n\n"
@@ -271,6 +298,24 @@ def news_detail(news_id):
     if data:
         return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
     abort(404)
+@app.route('/search')
+def search():
+    q = request.args.get('q')
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT id, title_fa, source, pub_date, desc_fa
+    FROM news
+    WHERE title_fa LIKE ? OR desc_fa LIKE ?
+    ORDER BY pub_date DESC
+    """, (f"%{q}%", f"%{q}%"))
+
+    news_list = c.fetchall()
+    conn.close()
+
+    return render_template('index.html', news=news_list)
 def background_updater():
     while True:
         print("🔄 Updating news...")
