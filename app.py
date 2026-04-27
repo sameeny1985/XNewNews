@@ -298,6 +298,18 @@ def news_detail(news_id):
     if data:
         return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
     abort(404)
+@app.route('/force')
+def force_update():
+    try:
+        shuffled_sources = SOURCES.copy()
+        random.shuffle(shuffled_sources)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            executor.map(process_source, shuffled_sources)
+
+        return "✅ اخبار گرفته شد"
+    except Exception as e:
+        return f"❌ Error: {e}"
 @app.route('/search')
 def search():
     q = request.args.get('q')
