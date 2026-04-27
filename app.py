@@ -131,7 +131,7 @@ def get_full_content(url):
 
 def process_source(src):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS news 
              (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -281,8 +281,8 @@ def background_updater():
             shuffled_sources = SOURCES.copy()
             random.shuffle(shuffled_sources)
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                executor.map(process_source, shuffled_sources)
+            for src in shuffled_sources:
+                process_source(src)
 
         except Exception as e:
             print("Update error:", e)
