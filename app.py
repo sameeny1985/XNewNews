@@ -208,38 +208,50 @@ def auto_update_worker():
 
 @app.route('/')
 def home():
-    """نمایش اخبار ذخیره شده در سایت"""
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        # نمایش اخبار ۱۲ ساعت اخیر به ترتیب جدیدترین
-        query = """
-            SELECT id, title_fa, source, pub_date, desc_fa 
-            FROM news 
-            WHERE pub_date >= datetime('now', '-12 hours')
-            ORDER BY pub_date DESC 
-            LIMIT 60
-        """
-        c.execute(query)
+        # نمایش اخبار ۱۲ ساعت اخیر در سایت
+        c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news WHERE pub_date >= datetime('now', '-12 hours') ORDER BY pub_date DESC LIMIT 60")
         news_list = c.fetchall()
         conn.close()
         return render_template('index.html', news=news_list)
     except Exception as e:
         return f"Database Error: {e}", 500
+
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT title_fa, desc_fa, source, pub_date, link FROM news WHERE id=?", (news_id,))
-    data = c.fetchone()
-    conn.close()
-    if data:
-        return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
-    abort(404)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT title_fa, desc_fa, source, pub_date, link FROM news WHERE id=?", (news_id,))
+        data = c.fetchone()
+        conn.close()
+        if data:
+            return render_template('post.html', title=data[0], content=data[1], source=data[2], date=data[3], original=data[4])
+        abort(404)
+    except:
+        abort(500)
 
-# این خطوط را دقیقاً قبل از تعریف @app.route یا در انتهای فایل (بدون تورفتگی) بنویسید
-update_thread = threading.Thread(target=auto_update_worker, daemon=True)
-update_thread.start()
+def run_updater():
+    """تابعی که فقط کارش آپدیت کردنه"""
+    print("برنامه آپدیت شروع شد...")
+    while True:
+        try:
+            shuffled_sources = SOURCES.copy()
+            random.shuffle(shuffled_sources)
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                executor.map(process_source, shuffled_sources)
+            print("آپدیت انجام شد. ۵ دقیقه انتظار...")
+        except Exception as e:
+            print(f"خطا در آپدیت: {e}")
+        time.sleep(300)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
+    import sys
+    # اگر دستور اجرای آپدیت اومد، فقط آپدیت کن
+    if len(sys.argv) > 1 and sys.argv[1] == "updater":
+        run_updater()
+    else:
+        # در غیر این صورت سایت رو بالا بیار
+        app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))
