@@ -51,7 +51,7 @@ def send_to_telegram(title, summary, news_id, source_name):
             f"🔴 <b>{title[:200]}</b>\n\n"
             f"🔹 منبع: {source_name}\n"
             f"📝 {summary[:300]}...\n\n"
-            f"🆔 @XNewNews"
+            f"🆔 @XNewNewsMavara"
         )
         requests.post(url, json={
             "chat_id": CHAT_ID,
