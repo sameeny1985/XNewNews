@@ -208,10 +208,11 @@ def auto_update_worker():
 
 @app.route('/')
 def home():
-    # حالا دیگر نیازی نیست اینجا آپدیت کنیم، فقط اخبار را نمایش می‌دهیم
+    """نمایش اخبار ذخیره شده در سایت"""
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
+        # نمایش اخبار ۱۲ ساعت اخیر به ترتیب جدیدترین
         query = """
             SELECT id, title_fa, source, pub_date, desc_fa 
             FROM news 
@@ -225,38 +226,6 @@ def home():
         return render_template('index.html', news=news_list)
     except Exception as e:
         return f"Database Error: {e}", 500
-
-# سایر Routeها مثل news_detail اینجا بمانند...
-
-if __name__ == "__main__":
-    # ایجاد و شروع ترد آپدیت خودکار قبل از اجرای وب‌سرور
-    update_thread = threading.Thread(target=auto_update_worker, daemon=True)
-    update_thread.start()
-    
-    # اجرای اپلیکیشن
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)))def send_to_telegram(title, summary, news_id, source_name, pub_date):
-    if not TOKEN: return
-    try:
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        # فرمت کردن متن پیام برای نمایش ساعت و تاریخ منبع
-        message_text = (
-            f"🔴 <b>{title[:200]}</b>\n\n"
-            f"🔹 منبع: {source_name}\n"
-            f"⏰ زمان انتشار منبع: {pub_date}\n"
-            f"📝 {summary[:300]}...\n\n"
-            f"🆔 @XNewNews"
-        )
-        
-        requests.post(url, json={
-            "chat_id": CHAT_ID,
-            "text": message_text,
-            "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": [[{"text": "📖 مشاهده کامل", "url": f"{MY_SITE_URL}/news/{news_id}"}]]
-            }
-        }, timeout=10)
-    except:
-        pass
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
     conn = sqlite3.connect(DB_PATH)
