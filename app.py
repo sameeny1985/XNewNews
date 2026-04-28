@@ -22,11 +22,11 @@ MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app"
 DB_PATH = "news.db"
 
 SOURCES = [
-    #{"name": "رویترز", "url": "https://www.reuters.com/arc/outboundfeeds/news-one/?outputType=xml"},
+    {"name": "رویترز", "url": "https://www.reuters.com/arc/outboundfeeds/news-one/?outputType=xml"},
     {"name": "ایران اینترنشنال", "url": "https://www.iranintl.com/rss/all"},
     {"name": "بی بی سی فارسی", "url": "https://www.bbc.com/persian/index.xml"},
-    #{"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/z$qppe_kq_"},
-    #{"name": "صدای آمریکا", "url": "https://ir.voanews.com/api/z-m_v_e-it"},
+    {"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/z$qppe_kq_"},
+    {"name": "صدای آمریکا", "url": "https://ir.voanews.com/api/z-m_v_e-it"},
     #{"name": "تسنیم", "url": "https://www.tasnimnews.com/fa/rss/feed/0/7/0/"},
     {"name": "دویچه وله", "url": "https://www.dw.com/fa/persian/s-3277"},
     {"name": "تایمز اسرائیل", "url": "https://www.timesofisrael.com/feed/"},
@@ -34,11 +34,11 @@ SOURCES = [
     {"name": "توییتر ترامپ", "url": "https://nitter.net/realDonaldTrump/rss"},
     {"name": "توییتر نتانیاهو", "url": "https://nitter.net/netanyahu/rss"},
     {"name": "توییتر رضا پهلوی", "url": "https://nitter.net/PahlaviReza/rss"},
-    #{"name": "ایران اینترنشنال", "url": "https://news.google.com/rss/search?q=Iran+International&hl=fa&gl=IR&ceid=IR:fa"},
+    {"name": "ایران اینترنشنال", "url": "https://news.google.com/rss/search?q=Iran+International&hl=fa&gl=IR&ceid=IR:fa"},
     #{"name": "صدای آمریکا (VOA)", "url": "https://ir.voanews.com/api/z$p_eyuvt_"},
     {"name": "رادیو فردا", "url": "https://www.radiofarda.com/api/zsqym_egiv"},
     #{"name": "بی‌بی‌سی فارسی", "url": "https://www.bbc.com/persian/index.xml"},
-    #{"name": "دویچه وله (DW)", "url": "https://rss.dw.com/rdf/rss-fa-all"},
+    {"name": "دویچه وله (DW)", "url": "https://rss.dw.com/rdf/rss-fa-all"},
     #{"name": "خبرگزاری فارس", "url": "https://www.farsnews.ir/rss"},
    
     {"name": "رویترز (Reuters)", "url": "https://www.reutersagency.com/feed/"},
@@ -78,23 +78,23 @@ SOURCES = [
     #{"name": "سخنگوی عفو بین‌الملل", "url": "https://nitter.net/AgnesCallamard/rss"},
     {"name": "وال استریت ژورنال (WSJ)", "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml"},
     {"name": "صدای آمریکا (VOA)", "url": "https://nitter.net/VOAIran/rss"},
-    #{"name": "رادیو فردا", "url": "https://nitter.net/RadioFarda_/rss"},
-    #{"name": "من و تو (Manoto)", "url": "https://nitter.net/manototv/rss"},
-    #{"name": "رویترز (Reuters Iran)", "url": "https://nitter.net/ReutersIran/rss"},
-    #{"name": "دویچه وله (DW) فارسی", "url": "https://nitter.net/dw_persian/rss"},
+    {"name": "رادیو فردا", "url": "https://nitter.net/RadioFarda_/rss"},
+    {"name": "من و تو (Manoto)", "url": "https://nitter.net/manototv/rss"},
+    {"name": "رویترز (Reuters Iran)", "url": "https://nitter.net/ReutersIran/rss"},
+    {"name": "دویچه وله (DW) فارسی", "url": "https://nitter.net/dw_persian/rss"},
     # {"name": "خبرگزاری فارس", "url": "https://nitter.net/FarsNews_Agency/rss"},
     # {"name": "خبرگزاری تسنیم", "url": "https://nitter.net/Tasnimnews_Fa/rss"},
     # {"name": "خبرگزاری ایسنا", "url": "https://nitter.net/isna_farsi/rss"},
     #{"name": "العربیه فارسی", "url": "https://nitter.net/AlArabiya_Far/rss"},
     #{"name": "کیهان لندن", "url": "https://nitter.net/KayhanLondon/rss"},
-    #{"name": "وال استریت ژورنال", "url": "https://nitter.net/WSJ/rss"},
+    {"name": "وال استریت ژورنال", "url": "https://nitter.net/WSJ/rss"},
     
     # --- منابع اسرائیلی (نسخه توییتر برای پایداری ۱۰۰٪) ---
-    #{"name": "کانال ۱۱ اسرائیل (Kaan)", "url": "https://nitter.net/kann_news/rss"},
-    #{"name": "کانال ۱۲ اسرائیل (N12)", "url": "https://nitter.net/N12News/rss"},
-    #{"name": "کانال ۱۴ اسرائیل", "url": "https://nitter.net/Now14Israel/rss"},
+    {"name": "کانال ۱۱ اسرائیل (Kaan)", "url": "https://nitter.net/kann_news/rss"},
+    {"name": "کانال ۱۲ اسرائیل (N12)", "url": "https://nitter.net/N12News/rss"},
+    {"name": "کانال ۱۴ اسرائیل", "url": "https://nitter.net/Now14Israel/rss"},
     #{"name": "تایمز اسرائیل (فارسی)", "url": "https://nitter.net/TimesofIsraelFA/rss"},
-    #{"name": "رادیو پیام اسرائیل", "url": "https://nitter.net/Be_Yisrael/rss"},
+    {"name": "رادیو پیام اسرائیل", "url": "https://nitter.net/Be_Yisrael/rss"},
     {"name": "تحلیل استراتژیک ویدکاف", "url": "https://nitter.cz/vidcaff/rss"},
     {"name": "i24News English", "url": "https://nitter.net/i24NEWS_EN/rss"},
     {"name": "Jerusalem Post", "url": "https://nitter.net/Jerusalem_Post/rss"},
@@ -119,6 +119,7 @@ def send_to_telegram(title, summary, news_id, source_name):
         message_text = (
             f"🔴 <b>{title[:200]}</b>\n\n"
             f"🔹 منبع: {source_name}\n"
+            f"⏰ زمان: {pub_date}\n"
             f"📝 {summary[:300]}...\n\n"
             f"🆔 @XNewNewsMavara"
         )
@@ -158,7 +159,7 @@ def process_source(src):
             conn.commit()
             
             # ارسال همزمان به تلگرام
-            send_to_telegram(title_fa, desc_fa, news_id, src['name'])
+            send_to_telegram(title_fa, desc_fa, news_id, src['name'], pub_date_iso)
             
         conn.close()
     except Exception as e:
