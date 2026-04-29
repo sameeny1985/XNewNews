@@ -117,7 +117,7 @@ def send_to_telegram(title, summary, news_id, source_name):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         message_text = (
-            f"🔴 <b>{title[:200]}</b>\n\n"
+            f"🔴 <b>{title[:100]}</b>\n\n"
             f"🔹 منبع: {source_name}\n"
             f"📝 {summary[:300]}...\n\n"
             f"🆔 @XNewNewsMavara"
@@ -147,9 +147,21 @@ def process_source(src):
             c.execute("SELECT id FROM news WHERE link=?", (link,))
             if c.fetchone(): continue
             
-            title_fa = ai_translate(item.title.text)
-            description = item.description.text if item.description else "خلاصه در سایت موجود است."
-            desc_fa = ai_translate(description)
+            try:
+                article = Article(link)
+                article.download()
+                article.parse()
+                raw_text = article.text[:2000]
+            except:
+                raw_text = item.description.text if item.description else "خلاصه در سایت موجود است."
+            
+            # --- تغییر اینجاست ---
+            raw_title = item.title.text
+            short_title = raw_title[:100] + "..." if len(raw_title) > 100 else raw_title
+            title_fa = ai_translate(short_title)
+            # ----------------------
+
+            desc_fa = ai_translate(raw_text)
             pub_date_iso = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
             c.execute("INSERT INTO news (title_fa, desc_fa, source, link, pub_date) VALUES (?, ?, ?, ?, ?)", 
