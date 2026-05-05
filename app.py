@@ -117,7 +117,7 @@ def send_to_telegram(title, summary, news_id, source_name):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         message_text = (
-            f"🔴 <b>{title[:100]}</b>\n\n"
+            f"🔴 <b>{title[:200]}</b>\n\n"
             f"🔹 منبع: {source_name}\n"
             f"📝 {summary[:300]}...\n\n"
             f"🆔 @XNewNewsMavara"
@@ -157,7 +157,7 @@ def process_source(src):
             
             # --- تغییر اینجاست ---
             raw_title = item.title.text
-            short_title = raw_title[:100] + "..." if len(raw_title) > 100 else raw_title
+            short_title = raw_title[:200] + "..." if len(raw_title) > 200 else raw_title
             title_fa = ai_translate(short_title)
             # ----------------------
 
