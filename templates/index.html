@@ -70,6 +70,31 @@
         .btn-more:hover {
             text-decoration: underline;
         }
+
+        /* استایل دکمه خبرخوان */
+        #newsReaderBtn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-family: 'Tahoma', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        #newsReaderBtn:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -93,5 +118,58 @@
         </div>
         {% endfor %}
     </div>
+
+    <button id="newsReaderBtn" onclick="toggleSpeech()">
+        <span id="btnIcon">🎙️</span> <span id="btnText">گوش دادن به اخبار</span>
+    </button>
+
+    <script>
+        let synth = window.speechSynthesis;
+        let isReading = false;
+
+        function toggleSpeech() {
+            if (isReading) {
+                synth.cancel();
+                isReading = false;
+                document.getElementById('btnText').innerText = "گوش دادن به اخبار";
+                document.getElementById('btnIcon').innerText = "🎙️";
+                return;
+            }
+
+            // جمع‌آوری تمام خبرهای موجود در صفحه
+            let articles = document.querySelectorAll('.news-card');
+            let fullText = "در حال خواندن آخرین اخبار تحلیل ایران. ";
+            
+            articles.forEach((article, index) => {
+                let title = article.querySelector('.title-link').innerText;
+                let summary = article.querySelector('.summary').innerText;
+                fullText += `خبر شماره ${index + 1}: ${title}. ${summary}. `;
+            });
+
+            if (articles.length === 0) {
+                alert("خبری برای خواندن موجود نیست.");
+                return;
+            }
+
+            let utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'fa-IR'; // تنظیم برای زبان فارسی
+            utterance.rate = 0.9;     // سرعت خواندن (کمی آهسته‌تر برای وضوح)
+            utterance.pitch = 1;
+
+            utterance.onstart = () => {
+                isReading = true;
+                document.getElementById('btnText').innerText = "توقف خواندن";
+                document.getElementById('btnIcon').innerText = "🛑";
+            };
+
+            utterance.onend = () => {
+                isReading = false;
+                document.getElementById('btnText').innerText = "گوش دادن به اخبار";
+                document.getElementById('btnIcon').innerText = "🎙️";
+            };
+
+            synth.speak(utterance);
+        }
+    </script>
 </body>
 </html>
