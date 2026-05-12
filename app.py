@@ -136,7 +136,7 @@ def send_to_telegram(title, summary, news_id, source_name):
 def process_source(src):
     try:
         conn = sqlite3.connect(DB_# این خط را اضافه کن:
-        conn.row_factory = sqlite3.Row 
+        #conn.row_factory = sqlite3.Row 
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
         
