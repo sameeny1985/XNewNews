@@ -76,7 +76,7 @@
             position: fixed;
             bottom: 30px;
             left: 30px;
-            background-color: #d32f2f;
+            background-color: #1b5e20; /* رنگ سبز تیره برای تمایز */
             color: white;
             border: none;
             padding: 15px 25px;
@@ -92,7 +92,7 @@
             transition: all 0.3s;
         }
         #newsReaderBtn:hover {
-            background-color: #b71c1c;
+            background-color: #0d3d0f;
             transform: scale(1.05);
         }
     </style>
@@ -114,6 +114,9 @@
             <div class="summary">
                 {{ item[1][:250] }}...
             </div>
+            
+            <div class="full-desc-hidden" style="display:none;">{{ item[4] }}</div>
+
             <a href="/news/{{ item[0] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
         </div>
         {% endfor %}
@@ -133,39 +136,43 @@
                 isReading = false;
                 document.getElementById('btnText').innerText = "گوش دادن به اخبار";
                 document.getElementById('btnIcon').innerText = "🎙️";
+                document.getElementById('newsReaderBtn').style.backgroundColor = "#1b5e20";
                 return;
             }
 
-            // جمع‌آوری تمام خبرهای موجود در صفحه
             let articles = document.querySelectorAll('.news-card');
-            let fullText = "در حال خواندن آخرین اخبار تحلیل ایران. ";
+            let fullText = "";
             
-            articles.forEach((article, index) => {
+            articles.forEach((article) => {
                 let title = article.querySelector('.title-link').innerText;
-                let summary = article.querySelector('.summary').innerText;
-                fullText += `خبر شماره ${index + 1}: ${title}. ${summary}. `;
+                // فقط متن شرح کامل فارسی را از دایو مخفی برمی‌دارد
+                let fullContent = article.querySelector('.full-desc-hidden').innerText;
+                
+                // ترکیب تیتر و شرح کامل (بدون خواندن منبع و تاریخ)
+                fullText += title + " . " + fullContent + " . ";
             });
 
-            if (articles.length === 0) {
+            if (!fullText.trim()) {
                 alert("خبری برای خواندن موجود نیست.");
                 return;
             }
 
             let utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = 'fa-IR'; // تنظیم برای زبان فارسی
-            utterance.rate = 0.9;     // سرعت خواندن (کمی آهسته‌تر برای وضوح)
-            utterance.pitch = 1;
+            utterance.lang = 'fa-IR'; 
+            utterance.rate = 0.9;     
 
             utterance.onstart = () => {
                 isReading = true;
                 document.getElementById('btnText').innerText = "توقف خواندن";
                 document.getElementById('btnIcon').innerText = "🛑";
+                document.getElementById('newsReaderBtn').style.backgroundColor = "#b71c1c";
             };
 
             utterance.onend = () => {
                 isReading = false;
                 document.getElementById('btnText').innerText = "گوش دادن به اخبار";
                 document.getElementById('btnIcon').innerText = "🎙️";
+                document.getElementById('newsReaderBtn').style.backgroundColor = "#1b5e20";
             };
 
             synth.speak(utterance);
