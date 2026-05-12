@@ -76,7 +76,7 @@
             position: fixed;
             bottom: 30px;
             left: 30px;
-            background-color: #1b5e20; /* رنگ سبز تیره برای تمایز */
+            background-color: #1b5e20;
             color: white;
             border: none;
             padding: 15px 25px;
@@ -106,18 +106,18 @@
 
         {% for item in news %}
         <div class="news-card">
-            <a href="/news/{{ item[0] }}" class="title-link">{{ item[1] }}</a>
+            <a href="/news/{{ item['id'] }}" class="title-link">{{ item['title_fa'] }}</a>
             <div class="meta">
-                <span>منبع: <b>{{ item[2] }}</b></span> | 
-                <span>زمان انتشار: {{ item[3] }}</span>
+                <span>منبع: <b>{{ item['source'] }}</b></span> | 
+                <span>زمان انتشار: {{ item['pub_date'] }}</span>
             </div>
             <div class="summary">
-                {{ item[1][:250] }}...
+                {{ item['title_fa'][:250] }}...
             </div>
             
-            <div class="full-desc-hidden" style="display:none;">{{ item[4] }}</div>
+            <div class="full-desc-hidden" style="display:none;">{{ item['desc_fa'] }}</div>
 
-            <a href="/news/{{ item[0] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
+            <a href="/news/{{ item['id'] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
         </div>
         {% endfor %}
     </div>
@@ -145,11 +145,14 @@
             
             articles.forEach((article) => {
                 let title = article.querySelector('.title-link').innerText;
-                // فقط متن شرح کامل فارسی را از دایو مخفی برمی‌دارد
                 let fullContent = article.querySelector('.full-desc-hidden').innerText;
                 
-                // ترکیب تیتر و شرح کامل (بدون خواندن منبع و تاریخ)
-                fullText += title + " . " + fullContent + " . ";
+                // بررسی صلب برای اینکه اگر دیتایی خراب بود یا آدرس بود، وارد متن خواندنی نشود
+                if (fullContent && !fullContent.includes("http") && !fullContent.includes("://")) {
+                    fullText += title + " . " + fullContent + " . ";
+                } else {
+                    fullText += title + " . "; // اگر شرح خبر خراب بود، حداقل فقط تیتر را بخواند
+                }
             });
 
             if (!fullText.trim()) {
