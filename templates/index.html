@@ -127,6 +127,13 @@
         let synth = window.speechSynthesis;
         let isReading = false;
 
+        // 🛑 راهکار نهایی: تزریق مستقیم عناوین از پایتون به آرایه جاوااسکریپت بدون دخالت کدهای HTML صفحه
+        let rawArticles = [
+            {% for item in news %}
+                "{{ item['title_fa'] | replace('"', '') | replace("'", "") }}",
+            {% endfor %}
+        ];
+
         function toggleSpeech() {
             if (isReading) {
                 synth.cancel();
@@ -137,43 +144,29 @@
                 return;
             }
 
-            let articles = document.querySelectorAll('.news-card');
             let fullText = "";
             
-            articles.forEach((article) => {
-                let title = article.querySelector('.title-link').innerText;
-                
-                // فیلتر اولیه برای حذف خطوطی که کلاً آدرس یا چرت‌وپرت انگلیسی هستند
-                if (title && !title.includes("http") && !title.includes("www") && !title.includes("://")) {
+            // پردازش مستقیم متن‌ها از روی متغیر
+            rawArticles.forEach((title) => {
+                if (title && !title.includes("http") && !title.includes("www")) {
                     fullText += title + " . ";
                 }
             });
 
-            // 🛑 فیلترهای فوق امنیتی برای آیفون 🛑
-            
-            // ۱. حذف تمام حروف انگلیسی (بزرگ و کوچک) تا آیفون انگلیسی حرف نزند
+            // حذف کامل تمام حروف انگلیسی و نشانه‌های خطرناک وب‌سایت
             fullText = fullText.replace(/[a-zA-Z]/g, '');
-
-            // ۲. حذف تمام اعداد انگلیسی (مثل 47 و 14 تلگرام که روی اعصاب بودند)
             fullText = fullText.replace(/[0-9]/g, '');
-
-            // ۳. حذف تمام کاراکترها و علائم نگارشی مزاحم (به جز نقطه تکی برای مکث خواندن)
             fullText = fullText.replace(/[\/\\#\,\:\-\_\=\+\@\%\^\&\*\(（）\)\[\]\{\}\<\>\?]/g, ' ');
-
-            // ۴. تبدیل نقطه‌های مکرر به یک نقطه تکی برای جلوگیری از گفتن "دات دات"
-            fullText = fullText.replace(/\.+/g, '.');
-
-            // ۵. صاف کردن فاصله‌های اضافی
             fullText = fullText.replace(/\s+/g, ' ').trim();
 
-            if (!fullText || fullText === ".") {
-                alert("هیچ متن فارسی سالمی برای خواندن یافت نشد.");
+            if (!fullText) {
+                alert("خبری برای خواندن یافت نشد.");
                 return;
             }
 
             let utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = 'fa-IR'; // فارسی خالص
-            utterance.rate = 0.85;     
+            utterance.lang = 'fa-IR';
+            utterance.rate = 0.85;
 
             utterance.onstart = () => {
                 isReading = true;
