@@ -188,7 +188,7 @@ def run_update_cycle():
 def home():
     threading.Thread(target=run_update_cycle).start()
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row # <--- اضافه شد
+    conn.row_factory = sqlite3.Row  # <--- این خط جادویی را دقیقاً اینجا بگذار
     c = conn.cursor()
     c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
