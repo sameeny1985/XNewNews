@@ -147,22 +147,28 @@
                 let title = article.querySelector('.title-link').innerText;
                 let fullContent = article.querySelector('.full-desc-hidden').innerText;
                 
-                // بررسی صلب برای اینکه اگر دیتایی خراب بود یا آدرس بود، وارد متن خواندنی نشود
-                if (fullContent && !fullContent.includes("http") && !fullContent.includes("://")) {
-                    fullText += title + " . " + fullContent + " . ";
+                // فیلتر کردن لینک‌های احتمالی
+                if (fullContent && !fullContent.includes("http") && !fullContent.includes("www")) {
+                    fullText += title + " " + fullContent + " "; 
                 } else {
-                    fullText += title + " . "; // اگر شرح خبر خراب بود، حداقل فقط تیتر را بخواند
+                    fullText += title + " ";
                 }
             });
 
+            // ترفند ویژه آیفون: حذف فیزیکی اسلش‌ها، نقطه‌ها و تمام کاراکترهای مزاحم
+            fullText = fullText.replace(/[\/\\#\s\t\n\.\,\:\-\_\=\+\@\%\^\&\*]/g, ' ');
+            // حذف حروف انگلیسی تکی جا مانده
+            fullText = fullText.replace(/[a-zA-Z]/g, ''); 
+
             if (!fullText.trim()) {
-                alert("خبری برای خواندن موجود نیست.");
+                alert("متنی برای خواندن پیدا نشد.");
                 return;
             }
 
-            let utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = 'fa-IR'; 
-            utterance.rate = 0.9;     
+            // ارسال متن تمیز شده به موتور صوتی آیفون با لحن بدون لکنت
+            let utterance = new SpeechSynthesisUtterance(fullText.trim());
+            utterance.lang = 'ar-SA'; 
+            utterance.rate = 0.85;     
 
             utterance.onstart = () => {
                 isReading = true;
