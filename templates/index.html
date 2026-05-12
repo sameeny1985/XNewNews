@@ -143,34 +143,37 @@
             articles.forEach((article) => {
                 let title = article.querySelector('.title-link').innerText;
                 
-                // شرط ۱: اگر خود تیتر حاوی لینک یا کلمات انگلیسی تابلوی آدرس بود، اصلاً وارد متن نشود
-                if (title && 
-                    !title.includes("http") && 
-                    !title.includes("www") && 
-                    !title.includes(".com") && 
-                    !title.includes("://")) {
-                    fullText += title + "   "; // ایجاد فاصله بین تیترها
+                // فیلتر اولیه برای حذف خطوطی که کلاً آدرس یا چرت‌وپرت انگلیسی هستند
+                if (title && !title.includes("http") && !title.includes("www") && !title.includes("://")) {
+                    fullText += title + " . ";
                 }
             });
 
-            // شرط ۲: حذف فیزیکی هرچیزی که بوی انگلیسی یا علامت می‌دهد
-            // حذف تمام حروف انگلیسی A تا Z (بزرگ و کوچک)
-            fullText = fullText.replace(/[a-zA-Z]/g, '');
+            // 🛑 فیلترهای فوق امنیتی برای آیفون 🛑
             
-            // حذف تمام نشانه‌های نگارشی و اسلش‌ها که آیفون را به هجی کردن می‌اندازد
-            fullText = fullText.replace(/[\/\\#\.\,\:\-\_\=\+\@\%\^\&\*\(\)\[\]\{\}\<\>\?]/g, ' ');
+            // ۱. حذف تمام حروف انگلیسی (بزرگ و کوچک) تا آیفون انگلیسی حرف نزند
+            fullText = fullText.replace(/[a-zA-Z]/g, '');
 
-            // حذف فاصله‌های اضافی تولید شده
+            // ۲. حذف تمام اعداد انگلیسی (مثل 47 و 14 تلگرام که روی اعصاب بودند)
+            fullText = fullText.replace(/[0-9]/g, '');
+
+            // ۳. حذف تمام کاراکترها و علائم نگارشی مزاحم (به جز نقطه تکی برای مکث خواندن)
+            fullText = fullText.replace(/[\/\\#\,\:\-\_\=\+\@\%\^\&\*\(（）\)\[\]\{\}\<\>\?]/g, ' ');
+
+            // ۴. تبدیل نقطه‌های مکرر به یک نقطه تکی برای جلوگیری از گفتن "دات دات"
+            fullText = fullText.replace(/\.+/g, '.');
+
+            // ۵. صاف کردن فاصله‌های اضافی
             fullText = fullText.replace(/\s+/g, ' ').trim();
 
-            if (!fullText) {
-                alert("هیچ تیتر فارسی معتبری برای خواندن در این صفحه یافت نشد.");
+            if (!fullText || fullText === ".") {
+                alert("هیچ متن فارسی سالمی برای خواندن یافت نشد.");
                 return;
             }
 
             let utterance = new SpeechSynthesisUtterance(fullText);
-            utterance.lang = 'fa-IR'; // بازگشت به فارسی خالص
-            utterance.rate = 0.9;     
+            utterance.lang = 'fa-IR'; // فارسی خالص
+            utterance.rate = 0.85;     
 
             utterance.onstart = () => {
                 isReading = true;
