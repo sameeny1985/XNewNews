@@ -114,7 +114,6 @@
             <div class="summary">
                 {{ item['title_fa'][:250] }}...
             </div>
-            
             <a href="/news/{{ item['id'] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
         </div>
         {% endfor %}
@@ -144,18 +143,33 @@
             articles.forEach((article) => {
                 let title = article.querySelector('.title-link').innerText;
                 
-                // فقط و فقط تیتر را اضافه می‌کنیم (چون تیترها کاملاً فارسی، تمیز و بدون لینک هستند)
-                fullText += title + " . ";
+                // شرط ۱: اگر خود تیتر حاوی لینک یا کلمات انگلیسی تابلوی آدرس بود، اصلاً وارد متن نشود
+                if (title && 
+                    !title.includes("http") && 
+                    !title.includes("www") && 
+                    !title.includes(".com") && 
+                    !title.includes("://")) {
+                    fullText += title + "   "; // ایجاد فاصله بین تیترها
+                }
             });
 
-            if (!fullText.trim()) {
-                alert("متنی برای خواندن پیدا نشد.");
+            // شرط ۲: حذف فیزیکی هرچیزی که بوی انگلیسی یا علامت می‌دهد
+            // حذف تمام حروف انگلیسی A تا Z (بزرگ و کوچک)
+            fullText = fullText.replace(/[a-zA-Z]/g, '');
+            
+            // حذف تمام نشانه‌های نگارشی و اسلش‌ها که آیفون را به هجی کردن می‌اندازد
+            fullText = fullText.replace(/[\/\\#\.\,\:\-\_\=\+\@\%\^\&\*\(\)\[\]\{\}\<\>\?]/g, ' ');
+
+            // حذف فاصله‌های اضافی تولید شده
+            fullText = fullText.replace(/\s+/g, ' ').trim();
+
+            if (!fullText) {
+                alert("هیچ تیتر فارسی معتبری برای خواندن در این صفحه یافت نشد.");
                 return;
             }
 
-            // تنظیم زبان روی فارسی خالص بدون کاراکترهای مزاحم
-            let utterance = new SpeechSynthesisUtterance(fullText.trim());
-            utterance.lang = 'fa-IR'; 
+            let utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'fa-IR'; // بازگشت به فارسی خالص
             utterance.rate = 0.9;     
 
             utterance.onstart = () => {
