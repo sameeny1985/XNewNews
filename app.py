@@ -135,7 +135,8 @@ def send_to_telegram(title, summary, news_id, source_name):
 
 def process_source(src):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_# این خط را اضافه کن:
+        conn.row_factory = sqlite3.Row 
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS news (id INTEGER PRIMARY KEY AUTOINCREMENT, title_fa TEXT, desc_fa TEXT, source TEXT, link TEXT UNIQUE, pub_date DATETIME)''')
         
@@ -185,10 +186,9 @@ def run_update_cycle():
 
 @app.route('/')
 def home():
-    # فعال‌سازی آپدیت با هر بار پینگ UptimeRobot
     threading.Thread(target=run_update_cycle).start()
-    
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row # <--- اضافه شد
     c = conn.cursor()
     c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
