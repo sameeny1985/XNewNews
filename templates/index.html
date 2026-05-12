@@ -115,8 +115,6 @@
                 {{ item['title_fa'][:250] }}...
             </div>
             
-            <div class="full-desc-hidden" style="display:none;">{{ item['desc_fa'] }}</div>
-
             <a href="/news/{{ item['id'] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
         </div>
         {% endfor %}
@@ -145,37 +143,20 @@
             
             articles.forEach((article) => {
                 let title = article.querySelector('.title-link').innerText;
-                let fullContent = article.querySelector('.full-desc-hidden').innerText;
                 
-                // اضافه کردن تیتر (که همیشه فارسی و تمیز است)
-                fullText += title + " ";
-                
-                // فیلتر سخت‌گیرانه: اگر متن دیتابیس شامل کدهای انگلیسی یا آدرس بود، اصلاً وارد متن خواندنی نشود
-                if (fullContent && 
-                    !fullContent.includes("http") && 
-                    !fullContent.includes("www") && 
-                    !fullContent.includes("/") && 
-                    !fullContent.includes("cnn") && 
-                    !fullContent.includes(".com")) {
-                    fullText += fullContent + " ";
-                }
+                // فقط و فقط تیتر را اضافه می‌کنیم (چون تیترها کاملاً فارسی، تمیز و بدون لینک هستند)
+                fullText += title + " . ";
             });
 
-            // حذف تمام کاراکترها و نشانه‌های نگارشی که آیفون را به هجی کردن می‌اندازند
-            fullText = fullText.replace(/[\/\\#\s\t\n\.\,\:\-\_\=\+\@\%\^\&\*\(\)\[\]\{\}]/g, ' ');
-            
-            // حذف مطلق تمام حروف انگلیسی (A تا Z) تا آیفون هیچ کلمه خارجی برای هجی کردن پیدا نکند
-            fullText = fullText.replace(/[a-zA-Z]/g, ''); 
-
             if (!fullText.trim()) {
-                alert("متن معتبری برای خواندن پیدا نشد.");
+                alert("متنی برای خواندن پیدا نشد.");
                 return;
             }
 
-            // خواندن نهایی با لایه‌ی امنیتی بالا
+            // تنظیم زبان روی فارسی خالص بدون کاراکترهای مزاحم
             let utterance = new SpeechSynthesisUtterance(fullText.trim());
-            utterance.lang = 'ar-SA'; 
-            utterance.rate = 0.85;     
+            utterance.lang = 'fa-IR'; 
+            utterance.rate = 0.9;     
 
             utterance.onstart = () => {
                 isReading = true;
