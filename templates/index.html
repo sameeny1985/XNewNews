@@ -163,39 +163,40 @@
         let isReading = false;
         let stopReading = false;
 
-        // تابع پاکسازی نهایی: فقط حروف خالص فارسی، عربی و فضاهای خالی مجاز هستند
+        // تابع تمیزکننده: هر چیزی که الفبای فارسی نباشد (حروف انگلیسی، اعداد، آیکون‌ها، کدهای مخفی و علائم) را کاملاً پاک می‌کند
         function cleanTextToPurePersian(text) {
             if (!text) return "";
             
-            // ۱. ابتدا لینک‌ها و دامین‌ها را برمی‌داریم
+            // جایگزینی تمام آدرس‌های احتمالی با فاصله
             let cleaned = text.replace(/https?:\/\/\S+/gi, ' ').replace(/www\.\S+/gi, ' ');
             
-            // ۲. فیلتر فوق امنیتی: هر کاراکتری که جزء الفبای فارسی/عربی و اعداد فارسی نیست را کلاً حذف کن (حذف کامل حروف انگلیسی و علائم)
+            // فقط اجازه ورود به حروف الفبای فارسی و فضاهای خالی داده می‌شود (کارهای انگلیسی و علائم کلاً غیب می‌شوند)
             cleaned = cleaned.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
             
-            // ۳. مرتب‌سازی فاصله‌ها
-            cleaned = cleaned.replace(/\s+/g, ' ').trim();
-            
-            return cleaned;
+            // تبدیل فاصله‌های چندتایی به یک فاصله
+            return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // بررسی اینکه آیا خبر مربوط به ۱۲ ساعت گذشته است یا خیر
+        // تابع تشخیص زمان با لایه امنیتی بالا (فیلتر ۱۲ ساعت)
         function isWithinLast12Hours(dateString) {
+            if (!dateString) return true; // اگر تاریخ خالی بود برای احتیاط خبر را بخواند
             try {
-                if (!dateString) return false;
-                // تبدیل فرمت YYYY-MM-DD HH:MM:SS به ساختار استاندارد دیت جاوااسکریپت
-                const formattedString = dateString.replace(/-/g, '/');
-                const pubDate = new Date(formattedString);
-                const now = new Date();
+                // پاک‌سازی رشته تاریخ برای فهم بهتر در مرورگرها
+                let normalizedDate = dateString.replace(/-/g, '/');
+                let pubDate = new Date(normalizedDate);
+                let now = new Date();
+
+                // اگر سیستم تاریخ لود نشد یا فیلد غیر عددی بود
+                if (isNaN(pubDate.getTime())) {
+                    return true; 
+                }
+
+                let diffInHours = (now - pubDate) / (1000 * 60 * 60);
                 
-                const diffInMilliseconds = now - pubDate;
-                const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
-                
-                // اگر فاصله زمانی مثبت و کمتر از ۱۲ ساعت بود
+                // بررسی محدوده ۱۲ ساعت قبل
                 return diffInHours >= 0 && diffInHours <= 12;
             } catch (e) {
-                // اگر فرمت تاریخ به هر دلیلی خوانده نشد، پیش‌فرض اجازه خواندن بده
-                return true;
+                return true; 
             }
         }
 
@@ -224,23 +225,26 @@
 
             let text = newsArray[index];
 
+            // اگر متن به هر دلیلی بعد از فیلتر خالی شد، برو خبر بعدی
+            if (!text || text.length < 2) {
+                speakNews(newsArray, index + 1);
+                return;
+            }
+
             synth.cancel();
 
             let utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = "fa-IR";
             utterance.rate = 0.85;
-            utterance.pitch = 1;
 
             utterance.onend = function () {
                 setTimeout(() => {
                     speakNews(newsArray, index + 1);
-                }, 400);
+                }, 300);
             };
 
             utterance.onerror = function () {
-                setTimeout(() => {
-                    speakNews(newsArray, index + 1);
-                }, 400);
+                speakNews(newsArray, index + 1);
             };
 
             synth.speak(utterance);
@@ -255,19 +259,18 @@
                 return;
             }
 
-            // گرفتن تمام کارت‌های خبر برای بررسی همزمان متن و زمان انتشار
             const cards = document.querySelectorAll(".news-card");
             let newsTexts = [];
 
             cards.forEach(card => {
                 const pubDateStr = card.getAttribute("data-pubdate");
                 
-                // شرط ۱۲ ساعت قبل در اینجا بررسی می‌شود
+                // اعمال فیلتر ۱۲ ساعته اخبار
                 if (isWithinLast12Hours(pubDateStr)) {
                     const titleElement = card.querySelector(".target-news-title");
                     if (titleElement) {
                         let pureText = cleanTextToPurePersian(titleElement.textContent);
-                        if (pureText && pureText.length > 3) {
+                        if (pureText && pureText.length > 2) {
                             newsTexts.push(pureText);
                         }
                     }
@@ -275,7 +278,7 @@
             });
 
             if (newsTexts.length === 0) {
-                alert("خبر جدیدی مربوط به ۱۲ ساعت اخیر برای خواندن پیدا نشد.");
+                alert("خبری در محدوده ۱۲ ساعت اخیر برای خواندن یافت نشد.");
                 return;
             }
 
