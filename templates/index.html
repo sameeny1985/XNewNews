@@ -160,8 +160,7 @@
     <script>
         const synth = window.speechSynthesis;
         let isReading = false;
-        let currentQueue = [];
-        let currentIndex = 0;
+        let currentUtterance = null;
 
         function updateButton(reading) {
             const btnText = document.getElementById("btnText");
@@ -179,48 +178,6 @@
             }
         }
 
-        // تابع اجرای نوبتی اخبار پشت سر هم
-        function playNext() {
-            // اگر کاربر دکمه توقف را زده یا اخبار صف تمام شده است
-            if (!isReading || currentIndex >= currentQueue.length) {
-                isReading = false;
-                updateButton(false);
-                synth.cancel();
-                return;
-            }
-
-            let text = currentQueue[currentIndex].trim();
-            
-            // پاک‌سازی نهایی متن قبل از ارسال به مرورگر (حذف کاراکترهای مزاحم غیرفارسی)
-            text = text.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
-            text = text.replace(/\s+/g, ' ').trim();
-
-            // اگر متن خبر معتبر نبود، برو خبر بعدی
-            if (text.length < 2) {
-                currentIndex++;
-                playNext();
-                return;
-            }
-
-            let utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = "fa-IR";
-            utterance.rate = 0.85;
-
-            // وقتی خواندن این خبر تمام شد، اتوماتیک برو سراغ ایندکس بعدی
-            utterance.onend = function() {
-                currentIndex++;
-                setTimeout(playNext, 400); // ۴ دهم ثانیه مکث طبیعی بین اخبار
-            };
-
-            // در صورت بروز هرگونه خطای صوتی، سیستم قفل نمی‌کند و به خبر بعدی سوئیچ می‌کند
-            utterance.onerror = function() {
-                currentIndex++;
-                playNext();
-            };
-
-            synth.speak(utterance);
-        }
-
         function toggleSpeech() {
             if (isReading) {
                 isReading = false;
@@ -230,25 +187,48 @@
             }
 
             const elements = document.querySelectorAll(".target-news-title");
-            currentQueue = [];
-            currentIndex = 0;
+            let combinedText = "";
 
-            // خواندن و ریختن تک‌تک تیترها در صف اجرای نوبتی
-            elements.forEach(el => {
-                if (el.textContent.trim()) {
-                    currentQueue.push(el.textContent.trim());
+            // جمع‌آوری و چسباندن تمام تیترها به یک متن واحد بزرگ
+            elements.forEach((el) => {
+                if (el && el.textContent) {
+                    let txt = el.textContent.trim();
+                    // پاک‌سازی کاراکترهای مخفی و انگلیسی مزاحم صوتی
+                    txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
+                    txt = txt.replace(/\s+/g, ' ').trim();
+                    
+                    if (txt.length > 2) {
+                        // اضافه کردن کلمه «خبر بعدی» و چند نقطه برای ایجاد مکث طبیعی و جدا شدن اخبار از هم
+                        combinedText += txt + " . . خبر بعدی . . ";
+                    }
                 }
             });
 
-            if (currentQueue.length === 0) {
-                alert("خبری در صفحه پیدا نشد.");
+            if (!combinedText.trim()) {
+                alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
                 return;
             }
 
             isReading = true;
             updateButton(true);
-            synth.cancel(); // خالی کردن بافرهای صوتی معلق قبلی مرورگر
-            playNext(); // شروع اجرای اتوماتیک صف اخبار از اولین مورد
+            synth.cancel(); // خالی کردن بافرهای صوتی معلق قدیمی
+
+            // ساخت یک پکیج صوتی واحد برای فریب دادن و باز کردن قفل مرورگر گوشی
+            currentUtterance = new SpeechSynthesisUtterance(combinedText);
+            currentUtterance.lang = "fa-IR";
+            currentUtterance.rate = 0.85;
+
+            currentUtterance.onend = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            currentUtterance.onerror = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            synth.speak(currentUtterance);
         }
     </script>
 
