@@ -132,7 +132,7 @@
         </header>
 
         {% for item in news %}
-        <div class="news-card" data-pubdate="{{ item['pub_date'] }}">
+        <div class="news-card">
 
             <a href="/news/{{ item['id'] }}" class="title-link target-news-title">
                 {{ item['title_fa'] }}
@@ -163,43 +163,6 @@
         let isReading = false;
         let stopReading = false;
 
-        // تابع تمیزکننده: هر چیزی که الفبای فارسی نباشد (حروف انگلیسی، اعداد، آیکون‌ها، کدهای مخفی و علائم) را کاملاً پاک می‌کند
-        function cleanTextToPurePersian(text) {
-            if (!text) return "";
-            
-            // جایگزینی تمام آدرس‌های احتمالی با فاصله
-            let cleaned = text.replace(/https?:\/\/\S+/gi, ' ').replace(/www\.\S+/gi, ' ');
-            
-            // فقط اجازه ورود به حروف الفبای فارسی و فضاهای خالی داده می‌شود (کارهای انگلیسی و علائم کلاً غیب می‌شوند)
-            cleaned = cleaned.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
-            
-            // تبدیل فاصله‌های چندتایی به یک فاصله
-            return cleaned.replace(/\s+/g, ' ').trim();
-        }
-
-        // تابع تشخیص زمان با لایه امنیتی بالا (فیلتر ۱۲ ساعت)
-        function isWithinLast12Hours(dateString) {
-            if (!dateString) return true; // اگر تاریخ خالی بود برای احتیاط خبر را بخواند
-            try {
-                // پاک‌سازی رشته تاریخ برای فهم بهتر در مرورگرها
-                let normalizedDate = dateString.replace(/-/g, '/');
-                let pubDate = new Date(normalizedDate);
-                let now = new Date();
-
-                // اگر سیستم تاریخ لود نشد یا فیلد غیر عددی بود
-                if (isNaN(pubDate.getTime())) {
-                    return true; 
-                }
-
-                let diffInHours = (now - pubDate) / (1000 * 60 * 60);
-                
-                // بررسی محدوده ۱۲ ساعت قبل
-                return diffInHours >= 0 && diffInHours <= 12;
-            } catch (e) {
-                return true; 
-            }
-        }
-
         function updateButton(reading) {
             const btnText = document.getElementById("btnText");
             const btnIcon = document.getElementById("btnIcon");
@@ -223,10 +186,10 @@
                 return;
             }
 
-            let text = newsArray[index];
+            let text = newsArray[index].trim();
 
-            // اگر متن به هر دلیلی بعد از فیلتر خالی شد، برو خبر بعدی
-            if (!text || text.length < 2) {
+            // اگر به هر دلیلی متن خالی بود برو سراغ بعدی
+            if (!text) {
                 speakNews(newsArray, index + 1);
                 return;
             }
@@ -259,26 +222,19 @@
                 return;
             }
 
-            const cards = document.querySelectorAll(".news-card");
+            // فقط گرفتن متن تیترها به ترتیب چیدمان در صفحه (بدون هیچ شرط زمانی یا فیلتر)
+            const elements = document.querySelectorAll(".target-news-title");
             let newsTexts = [];
 
-            cards.forEach(card => {
-                const pubDateStr = card.getAttribute("data-pubdate");
-                
-                // اعمال فیلتر ۱۲ ساعته اخبار
-                if (isWithinLast12Hours(pubDateStr)) {
-                    const titleElement = card.querySelector(".target-news-title");
-                    if (titleElement) {
-                        let pureText = cleanTextToPurePersian(titleElement.textContent);
-                        if (pureText && pureText.length > 2) {
-                            newsTexts.push(pureText);
-                        }
-                    }
+            elements.forEach(el => {
+                let txt = el.textContent.trim();
+                if (txt) {
+                    newsTexts.push(txt);
                 }
             });
 
             if (newsTexts.length === 0) {
-                alert("خبری در محدوده ۱۲ ساعت اخیر برای خواندن یافت نشد.");
+                alert("خبری در صفحه برای خواندن پیدا نشد.");
                 return;
             }
 
