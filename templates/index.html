@@ -105,8 +105,8 @@
         </header>
 
         {% for item in news %}
-        <div class="news-card" data-speech-text="{{ item['title_fa'] }}">
-            <a href="/news/{{ item['id'] }}" class="title-link">{{ item['title_fa'] }}</a>
+        <div class="news-card">
+            <a href="/news/{{ item['id'] }}" class="title-link target-news-title">{{ item['title_fa'] }}</a>
             <div class="meta">
                 <span>منبع: <b>{{ item['source'] }}</b></span> | 
                 <span>زمان انتشار: {{ item['pub_date'] }}</span>
@@ -126,7 +126,6 @@
     <script>
         let synth = window.speechSynthesis;
         let isReading = false;
-        let currentUtterance = null;
 
         function toggleSpeech() {
             if (isReading) {
@@ -138,57 +137,41 @@
                 return;
             }
 
-            let cards = document.querySelectorAll('.news-card');
+            // اینجا مستقیماً و فقط متن داخل لینک تیترها را جمع میکنیم، بدون هیچ کد یا علامت اضافه
+            let titles = document.querySelectorAll('.target-news-title');
             let fullText = "";
             
-            cards.forEach((card) => {
-                // خواندن مستقیم از اتریبیوت دیتا بدون دخالت کدهای صفحه
-                let text = card.getAttribute('data-speech-text');
-                
-                if (text) {
-                    fullText += text + " . ";
+            titles.forEach((el) => {
+                let txt = el.innerText.trim();
+                if (txt) {
+                    fullText += txt + " . ";
                 }
             });
 
-            // لایه‌ی پاک‌سازی نهایی برای کامپیوتر و آیفون
-            // حذف تمام کلمات و حروف انگلیسی (حتی آدرس‌های خراب دیتابیس)
-            fullText = fullText.replace(/[a-zA-Z]/g, '');
-            // حذف تمام اعداد انگلیسی و آیدی‌های عددی تلگرام
-            fullText = fullText.replace(/[0-9]/g, '');
-            // حذف تمام کاراکترها و علائم نگارشی که هجی می‌شوند (اسلش، کاما و غیره)
-            fullText = fullText.replace(/[\/\\#\,\:\-\_\=\+\@\%\^\&\*\(（）\)\[\]\{\}\<\>\?]/g, ' ');
-            // تمیزکاری فاصله‌ها
-            fullText = fullText.replace(/\s+/g, ' ').trim();
-
-            if (!fullText) {
-                alert("متن معتبری برای خواندن پیدا نشد.");
+            if (!fullText.trim()) {
+                alert("متنی برای خواندن پیدا نشد.");
                 return;
             }
 
-            currentUtterance = new SpeechSynthesisUtterance(fullText);
-            currentUtterance.lang = 'fa-IR'; // زبان استاندارد فارسی برای ویندوز، مک و موبایل
-            currentUtterance.rate = 0.9;     
+            let utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'fa-IR'; // زبان فارسی خالص
+            utterance.rate = 0.85;     
 
-            currentUtterance.onstart = () => {
+            utterance.onstart = () => {
                 isReading = true;
                 document.getElementById('btnText').innerText = "توقف خواندن";
                 document.getElementById('btnIcon').innerText = "🛑";
                 document.getElementById('newsReaderBtn').style.backgroundColor = "#b71c1c";
             };
 
-            currentUtterance.onend = () => {
+            utterance.onend = () => {
                 isReading = false;
                 document.getElementById('btnText').innerText = "گوش دادن به اخبار";
                 document.getElementById('btnIcon').innerText = "🎙️";
                 document.getElementById('newsReaderBtn').style.backgroundColor = "#1b5e20";
             };
 
-            currentUtterance.onerror = (event) => {
-                console.error("SpeechSynthesis error:", event);
-                isReading = false;
-            };
-
-            synth.speak(currentUtterance);
+            synth.speak(utterance);
         }
     </script>
 </body>
