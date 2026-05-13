@@ -133,8 +133,8 @@
 
         {% for item in news %}
         <div class="news-card">
-            <a href="/news/{{ item['id'] }}" class="title-link target-news-title">
-                {{ item['title_fa'] }}
+            <a href="/news/{{ item['id'] }}" class="title-link">
+                <span class="target-news-title">{{ item['title_fa'] }}</span>
             </a>
 
             <div class="meta">
@@ -157,93 +157,92 @@
         <span id="btnText">گوش دادن به اخبار</span>
     </button>
 
-<script>
-    const synth = window.speechSynthesis;
-    let isReading = false;
-    let currentUtterance = null;
+    <script>
+        const synth = window.speechSynthesis;
+        let isReading = false;
+        let currentUtterance = null;
 
-    function updateButton(reading) {
-        const btnText = document.getElementById("btnText");
-        const btnIcon = document.getElementById("btnIcon");
-        const btn = document.getElementById("newsReaderBtn");
+        function updateButton(reading) {
+            const btnText = document.getElementById("btnText");
+            const btnIcon = document.getElementById("btnIcon");
+            const btn = document.getElementById("newsReaderBtn");
 
-        if (reading) {
-            btnText.innerText = "توقف خواندن";
-            btnIcon.innerText = "🛑";
-            btn.style.background = "rgba(183,28,28,0.92)";
-        } else {
-            btnText.innerText = "گوش دادن به اخبار";
-            btnIcon.innerText = "🎙️";
-            btn.style.background = "rgba(27,94,32,0.85)";
-        }
-    }
-
-    function toggleSpeech() {
-        if (isReading) {
-            isReading = false;
-            synth.cancel();
-            updateButton(false);
-            return;
-        }
-
-        const elements = document.querySelectorAll(".target-news-title");
-        let combinedText = "";
-
-        elements.forEach((el) => {
-            if (el && el.textContent) {
-                let txt = el.textContent.trim();
-                
-                // ۱. حذف کاراکترهای مخفی و اموجی‌ها، بدون آسیب زدن به متن فارسی و اعداد
-                txt = txt.replace(/[\u200B-\u200D\uFEFF]/g, ''); 
-                txt = txt.replace(/\s+/g, ' ').trim();
-                
-                if (txt.length > 2) {
-                    // ۲. استفاده از ویرگول فارسی (،) به جای نقطه جهت ایجاد مکث طبیعی بدون تلفظ کلمه "دات"
-                    combinedText += txt + " ، ، خبر بعدی ، ، ";
-                }
+            if (reading) {
+                btnText.innerText = "توقف خواندن";
+                btnIcon.innerText = "🛑";
+                btn.style.background = "rgba(183,28,28,0.92)";
+            } else {
+                btnText.innerText = "گوش دادن به اخبار";
+                btnIcon.innerText = "🎙️";
+                btn.style.background = "rgba(27,94,32,0.85)";
             }
-        });
-
-        if (!combinedText.trim()) {
-            alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
-            return;
         }
 
-        isReading = true;
-        updateButton(true);
-        synth.cancel(); // خالی کردن بافرهای صوتی قدیمی
+        function toggleSpeech() {
+            if (isReading) {
+                isReading = false;
+                synth.cancel();
+                updateButton(false);
+                return;
+            }
 
-        currentUtterance = new SpeechSynthesisUtterance(combinedText);
-        
-        // تنظیم دقیق زبان روی فارسی
-        currentUtterance.lang = "fa-IR";
-        currentUtterance.rate = 0.85; // سرعت ملایم برای خوانش بهتر فارسی
+            const elements = document.querySelectorAll(".target-news-title");
+            let combinedText = "";
 
-        // تلاش برای پیدا کردن داینامیک صدای فارسی سیستم در صورت وجود
-        const voices = synth.getVoices();
-        const faVoice = voices.find(voice => voice.lang.includes('fa'));
-        if (faVoice) {
-            currentUtterance.voice = faVoice;
+            elements.forEach((el) => {
+                if (el && el.textContent) {
+                    let txt = el.textContent.trim();
+                    
+                    // حذف فضاهای خالی، اتصالات مخفی و علائم انگلیسی مزاحم صوتی
+                    txt = txt.replace(/[\u200B-\u200D\uFEFF]/g, ''); 
+                    txt = txt.replace(/https?:\/\/\S+/g, ''); 
+                    txt = txt.replace(/[\/*_#\[\]\(\)\-\+\=\.\:\!\?]/g, ' ');
+                    txt = txt.replace(/\s+/g, ' ').trim();
+                    
+                    if (txt.length > 2) {
+                        // استفاده از ویرگول فارسی برای ایجاد مکث طبیعی بدون تلفظ کلمه "دات"
+                        combinedText += txt + " ، ، خبر بعدی ، ، ";
+                    }
+                }
+            });
+
+            if (!combinedText.trim()) {
+                alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
+                return;
+            }
+
+            isReading = true;
+            updateButton(true);
+            synth.cancel(); 
+
+            currentUtterance = new SpeechSynthesisUtterance(combinedText);
+            currentUtterance.lang = "fa-IR";
+            currentUtterance.rate = 0.85;
+
+            // تلاش برای پیدا کردن و استفاده از موتور صوتی فارسی سیستم در صورت وجود
+            const voices = synth.getVoices();
+            const faVoice = voices.find(voice => voice.lang.includes('fa'));
+            if (faVoice) {
+                currentUtterance.voice = faVoice;
+            }
+
+            currentUtterance.onend = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            currentUtterance.onerror = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            synth.speak(currentUtterance);
         }
 
-        currentUtterance.onend = function() {
-            isReading = false;
-            updateButton(false);
-        };
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = synth.getVoices;
+        }
+    </script>
 
-        currentUtterance.onerror = function(event) {
-            console.error("SpeechSynthesis Error:", event);
-            isReading = false;
-            updateButton(false);
-        };
-
-        synth.speak(currentUtterance);
-    }
-
-    // این خط برای بارگذاری صحیح لیست صداها در مرورگرهای مبتنی بر کرومیوم (مثل اتصالات موبایل) کمک می‌کند
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = synth.getVoices;
-    }
-</script>
 </body>
 </html>
