@@ -7,6 +7,7 @@
     <title>تحلیل ایران | آخرین اخبار</title>
 
     <style>
+
         body {
             font-family: Tahoma, Arial, sans-serif;
             background-color: #f0f2f5;
@@ -28,7 +29,7 @@
             border-radius: 10px;
             margin-bottom: 30px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .news-card {
@@ -36,7 +37,7 @@
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             transition: transform 0.2s;
             unicode-bidi: embed;
         }
@@ -83,43 +84,67 @@
         }
 
         /* دکمه خبرخوان */
+
         #newsReaderBtn {
+
             position: fixed;
             bottom: 30px;
             left: 30px;
-            background: rgba(27, 94, 32, 0.85);
+
+            background: rgba(27,94,32,0.85);
+
             color: white;
+
             border: none;
+
             padding: 15px 25px;
+
             border-radius: 50px;
+
             font-family: Tahoma, sans-serif;
+
             font-weight: bold;
+
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
             z-index: 9999;
+
             display: flex;
+
             align-items: center;
+
             gap: 10px;
+
             transition: all 0.3s;
+
             backdrop-filter: blur(10px);
         }
 
         #newsReaderBtn:hover {
+
             transform: scale(1.05);
         }
 
-        @media(max-width:768px) {
-            #newsReaderBtn {
-                left: 15px;
-                bottom: 15px;
-                padding: 12px 18px;
-                font-size: 14px;
+        @media(max-width:768px){
+
+            #newsReaderBtn{
+
+                left:15px;
+                bottom:15px;
+
+                padding:12px 18px;
+
+                font-size:14px;
             }
 
-            .title-link {
-                font-size: 1.1rem;
+            .title-link{
+
+                font-size:1.1rem;
             }
         }
+
     </style>
 </head>
 
@@ -128,8 +153,11 @@
     <div class="container">
 
         <header>
+
             <h1>XNew News</h1>
+
             <p>بروزرسانی لحظه‌ای اخبار منابع مختلف</p>
+
         </header>
 
         {% for item in news %}
@@ -138,20 +166,38 @@
 
             <a href="/news/{{ item['id'] }}"
                class="title-link target-news-title">
+
                 {{ item['title_fa'] }}
+
             </a>
 
             <div class="meta">
-                <span>منبع: <b>{{ item['source'] }}</b></span> |
-                <span>زمان انتشار: {{ item['pub_date'] }}</span>
+
+                <span>
+                    منبع:
+                    <b>{{ item['source'] }}</b>
+                </span>
+
+                |
+
+                <span>
+                    زمان انتشار:
+                    {{ item['pub_date'] }}
+                </span>
+
             </div>
 
             <div class="summary">
+
                 {{ item['desc_fa'][:250] }}
+
             </div>
 
-            <a href="/news/{{ item['id'] }}" class="btn-more">
-                ادامه مطلب و شرح کامل خبر ←
+            <a href="/news/{{ item['id'] }}"
+               class="btn-more">
+
+               ادامه مطلب و شرح کامل خبر ←
+
             </a>
 
         </div>
@@ -161,9 +207,13 @@
     </div>
 
     <!-- دکمه خبرخوان -->
+
     <button id="newsReaderBtn" onclick="toggleSpeech()">
+
         <span id="btnIcon">🎙️</span>
+
         <span id="btnText">گوش دادن به اخبار</span>
+
     </button>
 
     <script>
@@ -171,6 +221,7 @@
         const synth = window.speechSynthesis;
 
         let isReading = false;
+
         let stopReading = false;
 
         function cleanText(text) {
@@ -178,46 +229,71 @@
             if (!text) return "";
 
             return text
-                .replace(/https?:\/\/\S+/gi, '')
-                .replace(/www\.\S+/gi, '')
-                .replace(/[^\u0600-\u06FF0-9a-zA-Z\s\.\،\؟\!\-]/g, ' ')
+
+                // حذف لینک
+                .replace(/https?:\/\/\S+/gi, ' ')
+
+                // حذف www
+                .replace(/www\.\S+/gi, ' ')
+
+                // حذف دامین‌ها
+                .replace(/\b(com|org|net|ir|io|co)\b/gi, ' ')
+
+                // حذف علامت‌ها
+                .replace(/[\/\\#,+()$~%.'":*?<>{}@!^_=|[\];]/g, ' ')
+
+                // حذف سه نقطه
+                .replace(/\.{2,}/g, ' ')
+
+                // حذف فاصله اضافه
                 .replace(/\s+/g, ' ')
+
                 .trim();
         }
 
         function updateButton(reading) {
 
             const btnText = document.getElementById("btnText");
+
             const btnIcon = document.getElementById("btnIcon");
+
             const btn = document.getElementById("newsReaderBtn");
 
             if (reading) {
 
                 btnText.innerText = "توقف خواندن";
+
                 btnIcon.innerText = "🛑";
-                btn.style.background = "rgba(183,28,28,0.9)";
+
+                btn.style.background = "rgba(183,28,28,0.92)";
 
             } else {
 
                 btnText.innerText = "گوش دادن به اخبار";
+
                 btnIcon.innerText = "🎙️";
+
                 btn.style.background = "rgba(27,94,32,0.85)";
             }
         }
 
-        function speakOneByOne(newsArray, index = 0) {
+        function speakNews(newsArray, index = 0) {
 
             if (stopReading) {
 
                 isReading = false;
+
                 updateButton(false);
+
                 return;
             }
 
             if (index >= newsArray.length) {
 
                 isReading = false;
+
                 updateButton(false);
+
                 return;
             }
 
@@ -225,24 +301,39 @@
 
             if (!text || text.length < 3) {
 
-                speakOneByOne(newsArray, index + 1);
+                speakNews(newsArray, index + 1);
+
                 return;
             }
+
+            synth.cancel();
 
             let utterance = new SpeechSynthesisUtterance(text);
 
             utterance.lang = "fa-IR";
-            utterance.rate = 0.9;
+
+            utterance.rate = 0.8;
+
             utterance.pitch = 1;
+
+            utterance.volume = 1;
 
             utterance.onend = function () {
 
-                speakOneByOne(newsArray, index + 1);
+                setTimeout(() => {
+
+                    speakNews(newsArray, index + 1);
+
+                }, 400);
             };
 
             utterance.onerror = function () {
 
-                speakOneByOne(newsArray, index + 1);
+                setTimeout(() => {
+
+                    speakNews(newsArray, index + 1);
+
+                }, 400);
             };
 
             synth.speak(utterance);
@@ -253,6 +344,7 @@
             if (isReading) {
 
                 stopReading = true;
+
                 synth.cancel();
 
                 isReading = false;
@@ -268,7 +360,7 @@
 
             elements.forEach(el => {
 
-                let txt = cleanText(el.innerText);
+                let txt = cleanText(el.textContent);
 
                 if (txt && txt.length > 3) {
 
@@ -279,15 +371,17 @@
             if (newsTexts.length === 0) {
 
                 alert("خبری برای خواندن پیدا نشد");
+
                 return;
             }
 
             stopReading = false;
+
             isReading = true;
 
             updateButton(true);
 
-            speakOneByOne(newsTexts);
+            speakNews(newsTexts);
         }
 
     </script>
