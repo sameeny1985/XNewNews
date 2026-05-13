@@ -157,80 +157,93 @@
         <span id="btnText">گوش دادن به اخبار</span>
     </button>
 
-    <script>
-        const synth = window.speechSynthesis;
-        let isReading = false;
-        let currentUtterance = null;
+<script>
+    const synth = window.speechSynthesis;
+    let isReading = false;
+    let currentUtterance = null;
 
-        function updateButton(reading) {
-            const btnText = document.getElementById("btnText");
-            const btnIcon = document.getElementById("btnIcon");
-            const btn = document.getElementById("newsReaderBtn");
+    function updateButton(reading) {
+        const btnText = document.getElementById("btnText");
+        const btnIcon = document.getElementById("btnIcon");
+        const btn = document.getElementById("newsReaderBtn");
 
-            if (reading) {
-                btnText.innerText = "توقف خواندن";
-                btnIcon.innerText = "🛑";
-                btn.style.background = "rgba(183,28,28,0.92)";
-            } else {
-                btnText.innerText = "گوش دادن به اخبار";
-                btnIcon.innerText = "🎙️";
-                btn.style.background = "rgba(27,94,32,0.85)";
-            }
+        if (reading) {
+            btnText.innerText = "توقف خواندن";
+            btnIcon.innerText = "🛑";
+            btn.style.background = "rgba(183,28,28,0.92)";
+        } else {
+            btnText.innerText = "گوش دادن به اخبار";
+            btnIcon.innerText = "🎙️";
+            btn.style.background = "rgba(27,94,32,0.85)";
+        }
+    }
+
+    function toggleSpeech() {
+        if (isReading) {
+            isReading = false;
+            synth.cancel();
+            updateButton(false);
+            return;
         }
 
-        function toggleSpeech() {
-            if (isReading) {
-                isReading = false;
-                synth.cancel();
-                updateButton(false);
-                return;
-            }
+        const elements = document.querySelectorAll(".target-news-title");
+        let combinedText = "";
 
-            const elements = document.querySelectorAll(".target-news-title");
-            let combinedText = "";
-
-            // جمع‌آوری و چسباندن تمام تیترها به یک متن واحد بزرگ
-            elements.forEach((el) => {
-                if (el && el.textContent) {
-                    let txt = el.textContent.trim();
-                    // پاک‌سازی کاراکترهای مخفی و انگلیسی مزاحم صوتی
-                    txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
-                    txt = txt.replace(/\s+/g, ' ').trim();
-                    
-                    if (txt.length > 2) {
-                        // اضافه کردن کلمه «خبر بعدی» و چند نقطه برای ایجاد مکث طبیعی و جدا شدن اخبار از هم
-                        combinedText += txt + " . . خبر بعدی . . ";
-                    }
+        elements.forEach((el) => {
+            if (el && el.textContent) {
+                let txt = el.textContent.trim();
+                
+                // ۱. حذف کاراکترهای مخفی و اموجی‌ها، بدون آسیب زدن به متن فارسی و اعداد
+                txt = txt.replace(/[\u200B-\u200D\uFEFF]/g, ''); 
+                txt = txt.replace(/\s+/g, ' ').trim();
+                
+                if (txt.length > 2) {
+                    // ۲. استفاده از ویرگول فارسی (،) به جای نقطه جهت ایجاد مکث طبیعی بدون تلفظ کلمه "دات"
+                    combinedText += txt + " ، ، خبر بعدی ، ، ";
                 }
-            });
-
-            if (!combinedText.trim()) {
-                alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
-                return;
             }
+        });
 
-            isReading = true;
-            updateButton(true);
-            synth.cancel(); // خالی کردن بافرهای صوتی معلق قدیمی
-
-            // ساخت یک پکیج صوتی واحد برای فریب دادن و باز کردن قفل مرورگر گوشی
-            currentUtterance = new SpeechSynthesisUtterance(combinedText);
-            currentUtterance.lang = "fa-IR";
-            currentUtterance.rate = 0.85;
-
-            currentUtterance.onend = function() {
-                isReading = false;
-                updateButton(false);
-            };
-
-            currentUtterance.onerror = function() {
-                isReading = false;
-                updateButton(false);
-            };
-
-            synth.speak(currentUtterance);
+        if (!combinedText.trim()) {
+            alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
+            return;
         }
-    </script>
 
+        isReading = true;
+        updateButton(true);
+        synth.cancel(); // خالی کردن بافرهای صوتی قدیمی
+
+        currentUtterance = new SpeechSynthesisUtterance(combinedText);
+        
+        // تنظیم دقیق زبان روی فارسی
+        currentUtterance.lang = "fa-IR";
+        currentUtterance.rate = 0.85; // سرعت ملایم برای خوانش بهتر فارسی
+
+        // تلاش برای پیدا کردن داینامیک صدای فارسی سیستم در صورت وجود
+        const voices = synth.getVoices();
+        const faVoice = voices.find(voice => voice.lang.includes('fa'));
+        if (faVoice) {
+            currentUtterance.voice = faVoice;
+        }
+
+        currentUtterance.onend = function() {
+            isReading = false;
+            updateButton(false);
+        };
+
+        currentUtterance.onerror = function(event) {
+            console.error("SpeechSynthesis Error:", event);
+            isReading = false;
+            updateButton(false);
+        };
+
+        synth.speak(currentUtterance);
+    }
+
+    // این خط برای بارگذاری صحیح لیست صداها در مرورگرهای مبتنی بر کرومیوم (مثل اتصالات موبایل) کمک می‌کند
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = synth.getVoices;
+    }
+</script>
 </body>
 </html>
