@@ -7,7 +7,6 @@
     <title>تحلیل ایران | آخرین اخبار</title>
 
     <style>
-
         body {
             font-family: Tahoma, Arial, sans-serif;
             background-color: #f0f2f5;
@@ -84,67 +83,42 @@
         }
 
         /* دکمه خبرخوان */
-
         #newsReaderBtn {
-
             position: fixed;
             bottom: 30px;
             left: 30px;
-
             background: rgba(27,94,32,0.85);
-
             color: white;
-
             border: none;
-
             padding: 15px 25px;
-
             border-radius: 50px;
-
             font-family: Tahoma, sans-serif;
-
             font-weight: bold;
-
             cursor: pointer;
-
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-
             z-index: 9999;
-
             display: flex;
-
             align-items: center;
-
             gap: 10px;
-
             transition: all 0.3s;
-
             backdrop-filter: blur(10px);
         }
 
         #newsReaderBtn:hover {
-
             transform: scale(1.05);
         }
 
         @media(max-width:768px){
-
             #newsReaderBtn{
-
                 left:15px;
                 bottom:15px;
-
                 padding:12px 18px;
-
                 font-size:14px;
             }
-
             .title-link{
-
                 font-size:1.1rem;
             }
         }
-
     </style>
 </head>
 
@@ -153,186 +127,119 @@
     <div class="container">
 
         <header>
-
             <h1>XNew News</h1>
-
             <p>بروزرسانی لحظه‌ای اخبار منابع مختلف</p>
-
         </header>
 
         {% for item in news %}
+        <div class="news-card" data-pubdate="{{ item['pub_date'] }}">
 
-        <div class="news-card">
-
-            <a href="/news/{{ item['id'] }}"
-               class="title-link target-news-title">
-
+            <a href="/news/{{ item['id'] }}" class="title-link target-news-title">
                 {{ item['title_fa'] }}
-
             </a>
 
             <div class="meta">
-
-                <span>
-                    منبع:
-                    <b>{{ item['source'] }}</b>
-                </span>
-
-                |
-
-                <span>
-                    زمان انتشار:
-                    {{ item['pub_date'] }}
-                </span>
-
+                <span>منبع: <b>{{ item['source'] }}</b></span> | 
+                <span>زمان انتشار: {{ item['pub_date'] }}</span>
             </div>
 
             <div class="summary">
-
-                {{ item['desc_fa'][:250] }}
-
+                {{ item['desc_fa'][:250] }}...
             </div>
 
-            <a href="/news/{{ item['id'] }}"
-               class="btn-more">
-
-               ادامه مطلب و شرح کامل خبر ←
-
-            </a>
-
+            <a href="/news/{{ item['id'] }}" class="btn-more">ادامه مطلب و شرح کامل خبر ←</a>
         </div>
-
         {% endfor %}
 
     </div>
 
-    <!-- دکمه خبرخوان -->
-
     <button id="newsReaderBtn" onclick="toggleSpeech()">
-
         <span id="btnIcon">🎙️</span>
-
         <span id="btnText">گوش دادن به اخبار</span>
-
     </button>
 
     <script>
-
         const synth = window.speechSynthesis;
-
         let isReading = false;
-
         let stopReading = false;
 
-        function cleanText(text) {
-
+        // تابع پاکسازی نهایی: فقط حروف خالص فارسی، عربی و فضاهای خالی مجاز هستند
+        function cleanTextToPurePersian(text) {
             if (!text) return "";
+            
+            // ۱. ابتدا لینک‌ها و دامین‌ها را برمی‌داریم
+            let cleaned = text.replace(/https?:\/\/\S+/gi, ' ').replace(/www\.\S+/gi, ' ');
+            
+            // ۲. فیلتر فوق امنیتی: هر کاراکتری که جزء الفبای فارسی/عربی و اعداد فارسی نیست را کلاً حذف کن (حذف کامل حروف انگلیسی و علائم)
+            cleaned = cleaned.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s]/g, ' ');
+            
+            // ۳. مرتب‌سازی فاصله‌ها
+            cleaned = cleaned.replace(/\s+/g, ' ').trim();
+            
+            return cleaned;
+        }
 
-            return text
-
-                // حذف لینک
-                .replace(/https?:\/\/\S+/gi, ' ')
-
-                // حذف www
-                .replace(/www\.\S+/gi, ' ')
-
-                // حذف دامین‌ها
-                .replace(/\b(com|org|net|ir|io|co)\b/gi, ' ')
-
-                // حذف علامت‌ها
-                .replace(/[\/\\#,+()$~%.'":*?<>{}@!^_=|[\];]/g, ' ')
-
-                // حذف سه نقطه
-                .replace(/\.{2,}/g, ' ')
-
-                // حذف فاصله اضافه
-                .replace(/\s+/g, ' ')
-
-                .trim();
+        // بررسی اینکه آیا خبر مربوط به ۱۲ ساعت گذشته است یا خیر
+        function isWithinLast12Hours(dateString) {
+            try {
+                if (!dateString) return false;
+                // تبدیل فرمت YYYY-MM-DD HH:MM:SS به ساختار استاندارد دیت جاوااسکریپت
+                const formattedString = dateString.replace(/-/g, '/');
+                const pubDate = new Date(formattedString);
+                const now = new Date();
+                
+                const diffInMilliseconds = now - pubDate;
+                const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+                
+                // اگر فاصله زمانی مثبت و کمتر از ۱۲ ساعت بود
+                return diffInHours >= 0 && diffInHours <= 12;
+            } catch (e) {
+                // اگر فرمت تاریخ به هر دلیلی خوانده نشد، پیش‌فرض اجازه خواندن بده
+                return true;
+            }
         }
 
         function updateButton(reading) {
-
             const btnText = document.getElementById("btnText");
-
             const btnIcon = document.getElementById("btnIcon");
-
             const btn = document.getElementById("newsReaderBtn");
 
             if (reading) {
-
                 btnText.innerText = "توقف خواندن";
-
                 btnIcon.innerText = "🛑";
-
                 btn.style.background = "rgba(183,28,28,0.92)";
-
             } else {
-
                 btnText.innerText = "گوش دادن به اخبار";
-
                 btnIcon.innerText = "🎙️";
-
                 btn.style.background = "rgba(27,94,32,0.85)";
             }
         }
 
         function speakNews(newsArray, index = 0) {
-
-            if (stopReading) {
-
+            if (stopReading || index >= newsArray.length) {
                 isReading = false;
-
                 updateButton(false);
-
                 return;
             }
 
-            if (index >= newsArray.length) {
-
-                isReading = false;
-
-                updateButton(false);
-
-                return;
-            }
-
-            let text = cleanText(newsArray[index]);
-
-            if (!text || text.length < 3) {
-
-                speakNews(newsArray, index + 1);
-
-                return;
-            }
+            let text = newsArray[index];
 
             synth.cancel();
 
             let utterance = new SpeechSynthesisUtterance(text);
-
             utterance.lang = "fa-IR";
-
-            utterance.rate = 0.8;
-
+            utterance.rate = 0.85;
             utterance.pitch = 1;
 
-            utterance.volume = 1;
-
             utterance.onend = function () {
-
                 setTimeout(() => {
-
                     speakNews(newsArray, index + 1);
-
                 }, 400);
             };
 
             utterance.onerror = function () {
-
                 setTimeout(() => {
-
                     speakNews(newsArray, index + 1);
-
                 }, 400);
             };
 
@@ -340,52 +247,44 @@
         }
 
         function toggleSpeech() {
-
             if (isReading) {
-
                 stopReading = true;
-
                 synth.cancel();
-
                 isReading = false;
-
                 updateButton(false);
-
                 return;
             }
 
-            const elements = document.querySelectorAll(".target-news-title");
-
+            // گرفتن تمام کارت‌های خبر برای بررسی همزمان متن و زمان انتشار
+            const cards = document.querySelectorAll(".news-card");
             let newsTexts = [];
 
-            elements.forEach(el => {
-
-                let txt = cleanText(el.textContent);
-
-                if (txt && txt.length > 3) {
-
-                    newsTexts.push(txt);
+            cards.forEach(card => {
+                const pubDateStr = card.getAttribute("data-pubdate");
+                
+                // شرط ۱۲ ساعت قبل در اینجا بررسی می‌شود
+                if (isWithinLast12Hours(pubDateStr)) {
+                    const titleElement = card.querySelector(".target-news-title");
+                    if (titleElement) {
+                        let pureText = cleanTextToPurePersian(titleElement.textContent);
+                        if (pureText && pureText.length > 3) {
+                            newsTexts.push(pureText);
+                        }
+                    }
                 }
             });
 
             if (newsTexts.length === 0) {
-
-                alert("خبری برای خواندن پیدا نشد");
-
+                alert("خبر جدیدی مربوط به ۱۲ ساعت اخیر برای خواندن پیدا نشد.");
                 return;
             }
 
             stopReading = false;
-
             isReading = true;
-
             updateButton(true);
-
             speakNews(newsTexts);
         }
-
     </script>
 
 </body>
-
 </html>
