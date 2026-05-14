@@ -62,10 +62,18 @@ def ai_translate(text):
     try:
         if not text: return ""
         clean_input = BeautifulSoup(text, "html.parser").get_text().strip()
+        
+        # حذف هرگونه کاراکتر کنترلی یا آدرس وب پیش از ترجمه
+        clean_input = re.sub(r'https?:\/\/\S+', '', clean_input)
+        clean_input = re.sub(r'@\w+', '', clean_input)
+        
         if any('\u0600' <= char <= '\u06FF' for char in clean_input[:30]):
-            return f"\u200f{clean_input}\u200f"
-        return f"\u200f{translator.translate(clean_input, dest='fa').text}\u200f"
-    except: return text
+            return clean_input
+            
+        translated = translator.translate(clean_input, dest='fa').text
+        return translated.strip()
+    except: 
+        return text
 
 def send_to_telegram(title, summary, news_id, source_name):
     if not TOKEN: return
@@ -112,9 +120,9 @@ def process_source(src):
             
             raw_title = item.title.text
             
-            # پاک‌سازی شناسه‌های کاربری توییتر و عبارت RT در سطح بک‌اند
+            # پاک‌سازی شناسه‌های توییتر و کلمات ساختاری مثل RT
             raw_title = re.sub(r'@\w+', '', raw_title)
-            raw_title = re.sub(r'\bRT\b', '', raw_title).strip()
+            raw_title = re.sub(r'\b(RT|rt)\b', '', raw_title).strip()
             
             short_title = raw_title[:200] + "..." if len(raw_title) > 200 else raw_title
             title_fa = ai_translate(short_title)
