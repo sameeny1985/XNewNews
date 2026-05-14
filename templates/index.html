@@ -82,6 +82,7 @@
             text-decoration: underline;
         }
 
+        /* دکمه خبرخوان */
         #newsReaderBtn {
             position: fixed;
             bottom: 30px;
@@ -159,7 +160,15 @@
     <script>
         const synth = window.speechSynthesis;
         let isReading = false;
-        let currentUtterance = null;
+        let newsQueue = []; 
+        let currentIdx = 0;
+
+        // تزریق مستقیم و امن تیترها از دیتابیس پایتون به آرایه جاوااسکریپت
+        const rawNewsList = [
+            {% for item in news %}
+                "{{ item['title_fa'] | replace('\"', '') | replace('\'', '') | replace('\n', ' ') }}"{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
 
         function updateButton(reading) {
             const btnText = document.getElementById("btnText");
@@ -177,6 +186,54 @@
             }
         }
 
+        // تابع بهینه‌سازی شده برای تمیزکاری قطعی کلمات انگلیسی و علائم
+        function cleanText(text) {
+            if (!text) return "";
+            let txt = text.trim();
+            txt = txt.replace(/@[A-Za-z0-9_]+/g, ''); // حذف شناسه‌های توییتر
+            txt = txt.replace(/[A-Za-z]/g, '');       // حذف حروف انگلیسی
+            txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s0-9۰-۹]/g, ' '); // فقط حروف فارسی و اعداد
+            return txt.replace(/\s+/g, ' ').trim();
+        }
+
+        // سیستم خوانش زنجیره‌ای برای مهار کردن خطای مرورگرهای ویندوز و آیفون
+        function readNext() {
+            if (!isReading || currentIdx >= newsQueue.length) {
+                isReading = false;
+                updateButton(false);
+                return;
+            }
+
+            let textToRead = newsQueue[currentIdx];
+            
+            if (textToRead.length < 3) {
+                currentIdx++;
+                readNext();
+                return;
+            }
+
+            // ایجاد مکث طبیعی قبل از شروع خبر بعدی با ویرگول فارسی
+            if (currentIdx > 0) {
+                textToRead = " ، ، خبر بعدی ، ، " + textToRead;
+            }
+
+            let utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.lang = "fa-IR";
+            utterance.rate = 0.9;
+
+            utterance.onend = function() {
+                currentIdx++;
+                readNext();
+            };
+
+            utterance.onerror = function() {
+                currentIdx++;
+                readNext();
+            };
+
+            synth.speak(utterance);
+        }
+
         function toggleSpeech() {
             if (isReading) {
                 isReading = false;
@@ -185,52 +242,21 @@
                 return;
             }
 
-            const elements = document.querySelectorAll(".target-news-title");
-            let combinedText = "";
-
-            elements.forEach((el) => {
-                if (el && el.textContent) {
-                    let txt = el.textContent.trim();
-                    
-                    // ۱. حذف آیدی‌های توییتر، تگ‌های اضافه و حروف انگلیسی مزاحم صوتی
-                    txt = txt.replace(/@[A-Za-z0-9_]+/g, ''); 
-                    txt = txt.replace(/[A-Za-z]/g, '');       
-                    
-                    // ۲. فیلتر کردن کاراکترها (نگهداری انحصاری حروف فارسی، اعداد و فضا)
-                    txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s0-9۰-۹]/g, ' ');
-                    txt = txt.replace(/\s+/g, ' ').trim();
-                    
-                    if (txt.length > 2) {
-                        // استفاده از ویرگول فارسی برای اعمال وقفه صوتی طبیعی بدون قرائت واژه دات
-                        combinedText += txt + " ، ، خبر بعدی ، ، ";
-                    }
-                }
-            });
-
-            if (!combinedText.trim() || combinedText.replace(/[،\s‌]/g, '').length < 3) {
+            // مپ کردن و فیلتر کردن لیست برای ساختن لیست نهایی قرائت
+            newsQueue = rawNewsList.map(t => cleanText(t)).filter(t => t.length > 2);
+            
+            if (newsQueue.length === 0) {
                 alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
                 return;
             }
 
             isReading = true;
+            currentIdx = 0;
             updateButton(true);
             synth.cancel(); 
 
-            currentUtterance = new SpeechSynthesisUtterance(combinedText);
-            currentUtterance.lang = "fa-IR";
-            currentUtterance.rate = 0.85;
-
-            currentUtterance.onend = function() {
-                isReading = false;
-                updateButton(false);
-            };
-
-            currentUtterance.onerror = function() {
-                isReading = false;
-                updateButton(false);
-            };
-
-            synth.speak(currentUtterance);
+            // استارت چرخه خواندن
+            readNext();
         }
     </script>
 
