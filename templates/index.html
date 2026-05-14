@@ -134,7 +134,7 @@
         {% for item in news %}
         <div class="news-card">
             <a href="/news/{{ item['id'] }}" class="title-link">
-                <span class="target-news-title">{{ item['title_fa'] }}</span>
+                <span>{{ item['title_fa'] }}</span>
             </a>
 
             <div class="meta">
@@ -157,18 +157,19 @@
         <span id="btnText">گوش دادن به اخبار</span>
     </button>
 
+    <script id="news-data" type="application/json">
+        [
+            {% for item in news %}
+                {{ item['title_fa'] | tojson }}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    </script>
+
     <script>
         const synth = window.speechSynthesis;
         let isReading = false;
         let newsQueue = []; 
         let currentIdx = 0;
-
-        // تزریق مستقیم تیترها بدون فیلترهای مخرب قبلی و فقط تمیز کردن امضاها و نقل‌قول‌ها
-        const rawNewsList = [
-            {% for item in news %}
-                "{{ item['title_fa'] | replace('\"', '') | replace('\'', '') | replace('\n', ' ') | replace('\r', '') | striptags }}"{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ];
 
         function updateButton(reading) {
             const btnText = document.getElementById("btnText");
@@ -186,6 +187,17 @@
             }
         }
 
+        // پاک‌سازی کاراکترهای کنترلی مخفی پایتون/مترجم که سیستم صوتی را گیج می‌کنند
+        function cleanTextForSpeech(text) {
+            if (!text) return "";
+            // حذف کاراکترهای پنهان جهت‌دهی متن مثل \u200f و مارک‌های یونیکد مزاحم
+            let txt = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
+            // حذف لینک‌های احتمالی داخل متن
+            txt = txt.replace(/https?:\/\/\S+/g, '');
+            // حذف فضا‌های خالی اضافه
+            return txt.replace(/\s+/g, ' ').trim();
+        }
+
         function readNext() {
             if (!isReading || currentIdx >= newsQueue.length) {
                 isReading = false;
@@ -193,7 +205,7 @@
                 return;
             }
 
-            let textToRead = newsQueue[currentIdx].trim();
+            let textToRead = newsQueue[currentIdx];
             
             if (textToRead.length < 3) {
                 currentIdx++;
@@ -201,14 +213,13 @@
                 return;
             }
 
-            // خواندن طبیعی عبارت "خبر بعدی" بین تیترها
             if (currentIdx > 0) {
-                textToRead = " خبر بعدی ، " + textToRead;
+                textToRead = " ، خبر بعدی ، " + textToRead;
             }
 
             let utterance = new SpeechSynthesisUtterance(textToRead);
             utterance.lang = "fa-IR";
-            utterance.rate = 0.9;
+            utterance.rate = 0.85;
 
             utterance.onend = function() {
                 currentIdx++;
@@ -231,8 +242,15 @@
                 return;
             }
 
-            // این بار هیچ فیلتر پنهانی روی متن اعمال نمی‌کنیم تا حروف فارسی حذف نشوند
-            newsQueue = rawNewsList.filter(t => t && t.trim().length > 2);
+            try {
+                // خواندن مستقیم و کاملاً ایزوله لیست جی‌سان بدون دخالت دادن ظاهر صفحه HTML
+                const jsonData = JSON.parse(document.getElementById('news-data').textContent);
+                newsQueue = jsonData.map(t => cleanTextForSpeech(t)).filter(t => t.length > 2);
+            } catch (e) {
+                console.error("خطا در پردازش دیتای اخبار:", e);
+                alert("خطایی در دریافت لیست اخبار رخ داد.");
+                return;
+            }
             
             if (newsQueue.length === 0) {
                 alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
