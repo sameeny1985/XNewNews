@@ -82,7 +82,6 @@
             text-decoration: underline;
         }
 
-        /* دکمه خبرخوان */
         #newsReaderBtn {
             position: fixed;
             bottom: 30px;
@@ -193,20 +192,22 @@
                 if (el && el.textContent) {
                     let txt = el.textContent.trim();
                     
-                    // حذف فضاهای خالی، اتصالات مخفی و علائم انگلیسی مزاحم صوتی
-                    txt = txt.replace(/[\u200B-\u200D\uFEFF]/g, ''); 
-                    txt = txt.replace(/https?:\/\/\S+/g, ''); 
-                    txt = txt.replace(/[\/*_#\[\]\(\)\-\+\=\.\:\!\?]/g, ' ');
+                    // ۱. حذف آیدی‌های توییتر، تگ‌های اضافه و حروف انگلیسی مزاحم صوتی
+                    txt = txt.replace(/@[A-Za-z0-9_]+/g, ''); 
+                    txt = txt.replace(/[A-Za-z]/g, '');       
+                    
+                    // ۲. فیلتر کردن کاراکترها (نگهداری انحصاری حروف فارسی، اعداد و فضا)
+                    txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s0-9۰-۹]/g, ' ');
                     txt = txt.replace(/\s+/g, ' ').trim();
                     
                     if (txt.length > 2) {
-                        // استفاده از ویرگول فارسی برای ایجاد مکث طبیعی بدون تلفظ کلمه "دات"
+                        // استفاده از ویرگول فارسی برای اعمال وقفه صوتی طبیعی بدون قرائت واژه دات
                         combinedText += txt + " ، ، خبر بعدی ، ، ";
                     }
                 }
             });
 
-            if (!combinedText.trim()) {
+            if (!combinedText.trim() || combinedText.replace(/[،\s‌]/g, '').length < 3) {
                 alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
                 return;
             }
@@ -219,13 +220,6 @@
             currentUtterance.lang = "fa-IR";
             currentUtterance.rate = 0.85;
 
-            // تلاش برای پیدا کردن و استفاده از موتور صوتی فارسی سیستم در صورت وجود
-            const voices = synth.getVoices();
-            const faVoice = voices.find(voice => voice.lang.includes('fa'));
-            if (faVoice) {
-                currentUtterance.voice = faVoice;
-            }
-
             currentUtterance.onend = function() {
                 isReading = false;
                 updateButton(false);
@@ -237,10 +231,6 @@
             };
 
             synth.speak(currentUtterance);
-        }
-
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = synth.getVoices;
         }
     </script>
 
