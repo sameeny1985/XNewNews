@@ -163,10 +163,10 @@
         let newsQueue = []; 
         let currentIdx = 0;
 
-        // تزریق مستقیم و امن تیترها از دیتابیس پایتون به آرایه جاوااسکریپت
+        // تزریق مستقیم تیترها بدون فیلترهای مخرب قبلی و فقط تمیز کردن امضاها و نقل‌قول‌ها
         const rawNewsList = [
             {% for item in news %}
-                "{{ item['title_fa'] | replace('\"', '') | replace('\'', '') | replace('\n', ' ') }}"{% if not loop.last %},{% endif %}
+                "{{ item['title_fa'] | replace('\"', '') | replace('\'', '') | replace('\n', ' ') | replace('\r', '') | striptags }}"{% if not loop.last %},{% endif %}
             {% endfor %}
         ];
 
@@ -186,17 +186,6 @@
             }
         }
 
-        // تابع بهینه‌سازی شده برای تمیزکاری قطعی کلمات انگلیسی و علائم
-        function cleanText(text) {
-            if (!text) return "";
-            let txt = text.trim();
-            txt = txt.replace(/@[A-Za-z0-9_]+/g, ''); // حذف شناسه‌های توییتر
-            txt = txt.replace(/[A-Za-z]/g, '');       // حذف حروف انگلیسی
-            txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s0-9۰-۹]/g, ' '); // فقط حروف فارسی و اعداد
-            return txt.replace(/\s+/g, ' ').trim();
-        }
-
-        // سیستم خوانش زنجیره‌ای برای مهار کردن خطای مرورگرهای ویندوز و آیفون
         function readNext() {
             if (!isReading || currentIdx >= newsQueue.length) {
                 isReading = false;
@@ -204,7 +193,7 @@
                 return;
             }
 
-            let textToRead = newsQueue[currentIdx];
+            let textToRead = newsQueue[currentIdx].trim();
             
             if (textToRead.length < 3) {
                 currentIdx++;
@@ -212,9 +201,9 @@
                 return;
             }
 
-            // ایجاد مکث طبیعی قبل از شروع خبر بعدی با ویرگول فارسی
+            // خواندن طبیعی عبارت "خبر بعدی" بین تیترها
             if (currentIdx > 0) {
-                textToRead = " ، ، خبر بعدی ، ، " + textToRead;
+                textToRead = " خبر بعدی ، " + textToRead;
             }
 
             let utterance = new SpeechSynthesisUtterance(textToRead);
@@ -242,8 +231,8 @@
                 return;
             }
 
-            // مپ کردن و فیلتر کردن لیست برای ساختن لیست نهایی قرائت
-            newsQueue = rawNewsList.map(t => cleanText(t)).filter(t => t.length > 2);
+            // این بار هیچ فیلتر پنهانی روی متن اعمال نمی‌کنیم تا حروف فارسی حذف نشوند
+            newsQueue = rawNewsList.filter(t => t && t.trim().length > 2);
             
             if (newsQueue.length === 0) {
                 alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
@@ -255,7 +244,6 @@
             updateButton(true);
             synth.cancel(); 
 
-            // استارت چرخه خواندن
             readNext();
         }
     </script>
