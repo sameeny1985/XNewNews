@@ -134,7 +134,7 @@
         {% for item in news %}
         <div class="news-card">
             <a href="/news/{{ item['id'] }}" class="title-link">
-                <span>{{ item['title_fa'] }}</span>
+                <span class="target-news-title">{{ item['title_fa'] }}</span>
             </a>
 
             <div class="meta">
@@ -157,7 +157,7 @@
         <span id="btnText">گوش دادن به اخبار</span>
     </button>
 
-    <script id="news-data" type="application/json">
+    <script id="raw-news-data" type="application/json">
         [
             {% for item in news %}
                 {{ item['title_fa'] | tojson }}{% if not loop.last %},{% endif %}
@@ -187,14 +187,12 @@
             }
         }
 
-        // پاک‌سازی کاراکترهای کنترلی مخفی پایتون/مترجم که سیستم صوتی را گیج می‌کنند
         function cleanTextForSpeech(text) {
             if (!text) return "";
-            // حذف کاراکترهای پنهان جهت‌دهی متن مثل \u200f و مارک‌های یونیکد مزاحم
+            // تمیزکاری کاراکترهای پنهان جهت‌دهی پایتون (\u200f و \u200e)
             let txt = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
-            // حذف لینک‌های احتمالی داخل متن
+            // حذف لینک‌ها یا ساختارهای آدرس اینترنتی احتمالی
             txt = txt.replace(/https?:\/\/\S+/g, '');
-            // حذف فضا‌های خالی اضافه
             return txt.replace(/\s+/g, ' ').trim();
         }
 
@@ -243,11 +241,11 @@
             }
 
             try {
-                // خواندن مستقیم و کاملاً ایزوله لیست جی‌سان بدون دخالت دادن ظاهر صفحه HTML
-                const jsonData = JSON.parse(document.getElementById('news-data').textContent);
-                newsQueue = jsonData.map(t => cleanTextForSpeech(t)).filter(t => t.length > 2);
+                // پارس کردن کاملاً مجزای دیتا از بلاک JSON بدون دخالت در کلاس‌ها یا کدهای HTML صفحه
+                const rawData = JSON.parse(document.getElementById('raw-news-data').textContent);
+                newsQueue = rawData.map(t => cleanTextForSpeech(t)).filter(t => t.length > 2);
             } catch (e) {
-                console.error("خطا در پردازش دیتای اخبار:", e);
+                console.error("Error reading JSON news array:", e);
                 alert("خطایی در دریافت لیست اخبار رخ داد.");
                 return;
             }
