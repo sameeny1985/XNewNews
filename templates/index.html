@@ -38,7 +38,6 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             transition: transform 0.2s;
-            unicode-bidi: embed;
         }
 
         .news-card:hover {
@@ -82,7 +81,6 @@
             text-decoration: underline;
         }
 
-        /* دکمه خبرخوان */
         #newsReaderBtn {
             position: fixed;
             bottom: 30px;
@@ -106,6 +104,15 @@
 
         #newsReaderBtn:hover {
             transform: scale(1.05);
+        }
+
+        /* پنهان کردن مخزن متنی صوتی از دید کاربر */
+        .audio-source-hidden {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
         }
 
         @media(max-width:768px){
@@ -134,8 +141,10 @@
         {% for item in news %}
         <div class="news-card">
             <a href="/news/{{ item['id'] }}" class="title-link">
-                <span class="target-news-title">{{ item['title_fa'] }}</span>
+                {{ item['title_fa'] }}
             </a>
+
+            <span class="audio-source-hidden data-text-only">{{ item['title_fa'] }}</span>
 
             <div class="meta">
                 <span>منبع: <b>{{ item['source'] }}</b></span> | 
@@ -157,19 +166,10 @@
         <span id="btnText">گوش دادن به اخبار</span>
     </button>
 
-    <script id="raw-news-data" type="application/json">
-        [
-            {% for item in news %}
-                {{ item['title_fa'] | tojson }}{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ]
-    </script>
-
     <script>
         const synth = window.speechSynthesis;
         let isReading = false;
-        let newsQueue = []; 
-        let currentIdx = 0;
+        let currentUtterance = null;
 
         function updateButton(reading) {
             const btnText = document.getElementById("btnText");
@@ -187,51 +187,6 @@
             }
         }
 
-        function cleanTextForSpeech(text) {
-            if (!text) return "";
-            // تمیزکاری کاراکترهای پنهان جهت‌دهی پایتون (\u200f و \u200e)
-            let txt = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, '');
-            // حذف لینک‌ها یا ساختارهای آدرس اینترنتی احتمالی
-            txt = txt.replace(/https?:\/\/\S+/g, '');
-            return txt.replace(/\s+/g, ' ').trim();
-        }
-
-        function readNext() {
-            if (!isReading || currentIdx >= newsQueue.length) {
-                isReading = false;
-                updateButton(false);
-                return;
-            }
-
-            let textToRead = newsQueue[currentIdx];
-            
-            if (textToRead.length < 3) {
-                currentIdx++;
-                readNext();
-                return;
-            }
-
-            if (currentIdx > 0) {
-                textToRead = " ، خبر بعدی ، " + textToRead;
-            }
-
-            let utterance = new SpeechSynthesisUtterance(textToRead);
-            utterance.lang = "fa-IR";
-            utterance.rate = 0.85;
-
-            utterance.onend = function() {
-                currentIdx++;
-                readNext();
-            };
-
-            utterance.onerror = function() {
-                currentIdx++;
-                readNext();
-            };
-
-            synth.speak(utterance);
-        }
-
         function toggleSpeech() {
             if (isReading) {
                 isReading = false;
@@ -240,27 +195,53 @@
                 return;
             }
 
-            try {
-                // پارس کردن کاملاً مجزای دیتا از بلاک JSON بدون دخالت در کلاس‌ها یا کدهای HTML صفحه
-                const rawData = JSON.parse(document.getElementById('raw-news-data').textContent);
-                newsQueue = rawData.map(t => cleanTextForSpeech(t)).filter(t => t.length > 2);
-            } catch (e) {
-                console.error("Error reading JSON news array:", e);
-                alert("خطایی در دریافت لیست اخبار رخ داد.");
-                return;
-            }
-            
-            if (newsQueue.length === 0) {
-                alert("هیچ تیتر خبری برای خواندن پیدا نشد.");
+            // خواندن انحصاری از مخزن پنهان متن خالص
+            const elements = document.querySelectorAll(".data-text-only");
+            let combinedText = "";
+
+            elements.forEach((el) => {
+                if (el && el.textContent) {
+                    let txt = el.textContent.trim();
+                    
+                    // حذف کامل کلمات انگلیسی، آدرس‌ها و نشانه‌های شبکه اجتماعی
+                    txt = txt.replace(/https?:\/\/\S+/g, ''); 
+                    txt = txt.replace(/@[A-Za-z0-9_]+/g, ''); 
+                    txt = txt.replace(/[A-Za-z]/g, '');       
+                    
+                    // فیلتر نهایی شدید: حذف هر چیزی که حرف فارسی یا عدد فارسی/عربی نیست
+                    txt = txt.replace(/[^آاأإبپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیًٌٍَُِّءیٓ‌\s0-9۰-۹]/g, ' ');
+                    txt = txt.replace(/\s+/g, ' ').strip ? txt.replace(/\s+/g, ' ').trim() : txt.trim();
+                    
+                    if (txt.length > 2) {
+                        combinedText += txt + " ، ، خبر بعدی ، ، ";
+                    }
+                }
+            });
+
+            if (!combinedText.trim()) {
+                alert("هیچ متنی برای خواندن پیدا نشد.");
                 return;
             }
 
             isReading = true;
-            currentIdx = 0;
             updateButton(true);
             synth.cancel(); 
 
-            readNext();
+            currentUtterance = new SpeechSynthesisUtterance(combinedText);
+            currentUtterance.lang = "fa-IR";
+            currentUtterance.rate = 0.82;
+
+            currentUtterance.onend = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            currentUtterance.onerror = function() {
+                isReading = false;
+                updateButton(false);
+            };
+
+            synth.speak(currentUtterance);
         }
     </script>
 
