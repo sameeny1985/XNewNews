@@ -4,9 +4,10 @@ import requests
 import random
 import time
 import threading
+import re
 from flask import Flask, render_template, abort
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from googletrans import Translator
 from newspaper import Article
 from concurrent.futures import ThreadPoolExecutor
@@ -14,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 app = Flask(__name__)
 translator = Translator()
 
+# تنظیمات اصلی
 TOKEN = os.environ.get("TOKEN")
 CHAT_ID = "@XNewNewsMavara"
 MY_SITE_URL = "https://voluntary-linn-shapyaar-22266960.koyeb.app"
@@ -109,6 +111,11 @@ def process_source(src):
                 raw_text = item.description.text if item.description else "خلاصه در سایت موجود است."
             
             raw_title = item.title.text
+            
+            # پاک‌سازی شناسه‌های کاربری توییتر و عبارت RT در سطح بک‌اند
+            raw_title = re.sub(r'@\w+', '', raw_title)
+            raw_title = re.sub(r'\bRT\b', '', raw_title).strip()
+            
             short_title = raw_title[:200] + "..." if len(raw_title) > 200 else raw_title
             title_fa = ai_translate(short_title)
 
@@ -136,7 +143,7 @@ def run_update_cycle():
 def home():
     threading.Thread(target=run_update_cycle).start()
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row 
+    conn.row_factory = sqlite3.Row  
     c = conn.cursor()
     c.execute("SELECT id, title_fa, source, pub_date, desc_fa FROM news ORDER BY pub_date DESC LIMIT 60")
     news_list = c.fetchall()
